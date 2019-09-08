@@ -22,14 +22,14 @@ func (e *PanicError) Unwrap() error {
 
 // Recover returns a runnable that will periodically run the runnable passed in argument.
 func Recover(runnable Runnable) Runnable {
-	return &recoverRunnable{runnable}
+	return &RecoverRunner{runnable}
 }
 
-type recoverRunnable struct {
+type RecoverRunner struct {
 	runnable Runnable
 }
 
-func (r *recoverRunnable) Run(ctx context.Context) (err error) {
+func (r *RecoverRunner) Run(ctx context.Context) (err error) {
 	defer func() {
 		if value := recover(); value != nil {
 			err = &PanicError{value}
@@ -39,6 +39,6 @@ func (r *recoverRunnable) Run(ctx context.Context) (err error) {
 	return r.runnable.Run(ctx)
 }
 
-func (r *recoverRunnable) name() string {
+func (r *RecoverRunner) name() string {
 	return nameOfRunnable(r.runnable)
 }

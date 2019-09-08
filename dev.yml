@@ -8,11 +8,18 @@ up:
   - go:
       version: 1.12.7
       modules: true
+  - custom:
+      name: Install golangci-lint
+      met?: which golangci-lint
+      meet: go get -u github.com/golangci/golangci-lint/cmd/golangci-lint
 
 commands:
   test:
-    desc: Run all tests
-    run: go test ./... -cover
+    desc: "poipoi"
+    run: go test -cover -race ./...
+  lint:
+    desc: "poipoi"
+    run: golangci-lint run
 
 open:
   devbuddy: https://github.com/devbuddy/devbuddy/blob/master/docs/Config.md#config-devyml

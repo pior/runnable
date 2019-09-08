@@ -3,27 +3,30 @@ package main
 import (
 	"context"
 	"errors"
-	"fmt"
 	"os"
 	"time"
 
 	"github.com/pior/runnable"
 )
 
+func printf(format string, a ...interface{}) {
+	// fmt.Printf(format, a...)
+}
+
 type ServerNoShutdown struct{}
 
 func (s *ServerNoShutdown) Run(ctx context.Context) error {
-	fmt.Printf("%T: start\n", s)
+	printf("%T: start\n", s)
 	<-make(chan struct{})
 
-	fmt.Printf("%T: stop\n", s)
+	printf("%T: stop\n", s)
 	return nil
 }
 
 type ServerPanic struct{}
 
 func (s *ServerPanic) Run(ctx context.Context) error {
-	fmt.Printf("%T: start\n", s)
+	printf("%T: start\n", s)
 
 	time.Sleep(time.Second * 1)
 	panic("yooooolooooooo")
@@ -34,7 +37,7 @@ type Server struct {
 }
 
 func (s *Server) Run(ctx context.Context) error {
-	fmt.Printf("%T: start\n", s)
+	printf("%T: start\n", s)
 
 	if s.deadline.Seconds() == 0 {
 		s.deadline = time.Second * 10000000
@@ -45,11 +48,11 @@ func (s *Server) Run(ctx context.Context) error {
 	select {
 	case <-ctx.Done():
 	case <-theEnd:
-		fmt.Printf("%T: sepuku\n", s)
+		printf("%T: sepuku\n", s)
 		return errors.New("sepuku")
 	}
 
-	fmt.Printf("%T: stop\n", s)
+	printf("%T: stop\n", s)
 	return nil
 }
 
@@ -62,14 +65,14 @@ func main() {
 		&Server{deadline: time.Millisecond * 1500},
 		&Server{deadline: time.Millisecond * 2000},
 		&Server{deadline: time.Millisecond * 2500},
-		// &ServerNoShutdown{},
+		&ServerNoShutdown{},
 		&ServerPanic{},
 	))
 
 	err := runner.Run(ctx)
 
 	if err != nil {
-		fmt.Printf("Error: %s", err)
+		printf("Error: %s", err)
 		os.Exit(1)
 	}
 
