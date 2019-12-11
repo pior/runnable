@@ -1,6 +1,6 @@
 module github.com/pior/runnable
 
-go 1.12
+go 1.13
 
 require (
 	cloud.google.com/go v0.45.1 // indirect
@@ -38,8 +38,6 @@ require (
 	github.com/mattn/go-colorable v0.1.2 // indirect
 	github.com/mattn/go-isatty v0.0.9 // indirect
 	github.com/mitchellh/go-ps v0.0.0-20190716172923-621e5597135b // indirect
-	github.com/modern-go/concurrent v0.0.0-20180306012644-bacd9c7ef1dd // indirect
-	github.com/modern-go/reflect2 v1.0.1 // indirect
 	github.com/mwitkow/go-conntrack v0.0.0-20190716064945-2f068394615f // indirect
 	github.com/nbutton23/zxcvbn-go v0.0.0-20180912185939-ae427f1e4c1d // indirect
 	github.com/onsi/ginkgo v1.10.1 // indirect
