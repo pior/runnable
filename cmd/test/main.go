@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"os"
 	"time"
 
 	"github.com/pior/runnable"
@@ -66,25 +65,14 @@ func (s *OneOff) Run(ctx context.Context) error {
 }
 
 func main() {
-	ctx := context.Background()
-	// ctx, cancel := context.WithCancel(ctx)
-	// cancel()
-
-	runner := runnable.Group(
+	runnables := []runnable.Runnable{
 		// &Server{deadline: time.Millisecond * 1500},
 		// &Server{deadline: time.Millisecond * 2000},
 		// &Server{deadline: time.Millisecond * 2500},
 		// &ServerNoShutdown{},
 		// &ServerPanic{},
 		runnable.Periodic(runnable.PeriodicOptions{Period: time.Second}, &OneOff{}),
-	)
-
-	err := runnable.Signal(runner).Run(ctx)
-
-	if err != nil {
-		printf("Error: %s", err)
-		os.Exit(1)
 	}
 
-	os.Exit(0)
+	runnable.RunGroup(runnables...)
 }
