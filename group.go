@@ -80,7 +80,7 @@ func (g *GroupRunner) Run(ctx context.Context) error {
 			log.Infof("group: %s is still running", c.name())
 			errs = append(errs, fmt.Sprintf("%s is still running", c.name()))
 		}
-		if c.err != nil {
+		if c.err != nil && c.err != context.Canceled {
 			errs = append(errs, fmt.Sprintf("%s crashed with %+v", c.name(), c.err))
 		}
 
