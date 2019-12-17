@@ -20,7 +20,7 @@ func (e *PanicError) Unwrap() error {
 	return nil
 }
 
-// Recover returns a runnable that will periodically run the runnable passed in argument.
+// Recover returns a runnable that recovers when a runnable panics and return an error to represent this panic.
 func Recover(runnable Runnable) Runnable {
 	return &RecoverRunner{runnable}
 }

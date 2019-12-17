@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"errors"
+	"fmt"
 	"os"
 	"time"
 
@@ -10,7 +11,7 @@ import (
 )
 
 func printf(format string, a ...interface{}) {
-	// fmt.Printf(format, a...)
+	fmt.Printf(format, a...)
 }
 
 type ServerNoShutdown struct{}
@@ -56,20 +57,29 @@ func (s *Server) Run(ctx context.Context) error {
 	return nil
 }
 
+type OneOff struct {
+}
+
+func (s *OneOff) Run(ctx context.Context) error {
+	printf("%T: run\n", s)
+	return nil
+}
+
 func main() {
 	ctx := context.Background()
-	ctx, cancel := context.WithCancel(ctx)
-	cancel()
+	// ctx, cancel := context.WithCancel(ctx)
+	// cancel()
 
-	runner := runnable.Signal(runnable.Group(
-		&Server{deadline: time.Millisecond * 1500},
-		&Server{deadline: time.Millisecond * 2000},
-		&Server{deadline: time.Millisecond * 2500},
-		&ServerNoShutdown{},
-		&ServerPanic{},
-	))
+	runner := runnable.Group(
+		// &Server{deadline: time.Millisecond * 1500},
+		// &Server{deadline: time.Millisecond * 2000},
+		// &Server{deadline: time.Millisecond * 2500},
+		// &ServerNoShutdown{},
+		// &ServerPanic{},
+		runnable.Periodic(runnable.PeriodicOptions{Period: time.Second}, &OneOff{}),
+	)
 
-	err := runner.Run(ctx)
+	err := runnable.Signal(runner).Run(ctx)
 
 	if err != nil {
 		printf("Error: %s", err)
