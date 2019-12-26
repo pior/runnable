@@ -12,19 +12,21 @@ type Runnable interface {
 	Run(context.Context) error
 }
 
-// // Periodic returns a runnable that will periodically run the runnable passed in argument.
-// func Periodic(period time.Duration, runnable Runnable) Runnable {
-// 	return nil
-// }
+type RunnableInit interface {
+	Runnable
+	Init(context.Context) error
+}
 
-// // Timeout returns a runnable that will periodically run the runnable passed in argument.
-// func Timeout(timeout time.Duration, runnable Runnable) Runnable {
-// 	return nil
-// }
+type RunnableCleanup interface {
+	Runnable
+	Cleanup(context.Context) error
+}
 
-// // RunAndExit runs the runnable and sets the exit code to 1 if the runnable returns an error.
-// func RunAndExit(timeout time.Duration, runnable Runnable) {
-// }
+type RunnableInitCleanup interface {
+	Runnable
+	Init(context.Context) error
+	Cleanup(context.Context) error
+}
 
 func nameOfRunnable(runnable Runnable) string {
 	if r, ok := runnable.(interface{ name() string }); ok {
