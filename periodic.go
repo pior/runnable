@@ -38,3 +38,7 @@ func (r *periodic) Run(ctx context.Context) (err error) {
 		time.Sleep(time.Until(start.Add(r.opts.Period)))
 	}
 }
+
+func (r *periodic) name() string {
+	return nameOfRunnable(r.runnable)
+}
