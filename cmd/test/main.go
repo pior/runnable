@@ -13,6 +13,29 @@ func printf(format string, a ...interface{}) {
 	fmt.Printf(format, a...)
 }
 
+type InitCleanup struct {
+	initTime    time.Duration
+	cleanupTime time.Duration
+}
+
+func (s *InitCleanup) Init(ctx context.Context) error {
+	time.Sleep(s.initTime)
+	return nil
+}
+
+func (s *InitCleanup) Run(ctx context.Context) error {
+	<-ctx.Done()
+	return nil
+}
+
+func (s *InitCleanup) Cleanup(ctx context.Context) error {
+	time.Sleep(s.cleanupTime)
+	return nil
+}
+
+var _ runnable.RunnableInit = &InitCleanup{}
+var _ runnable.RunnableCleanup = &InitCleanup{}
+
 type ServerNoShutdown struct{}
 
 func (s *ServerNoShutdown) Run(ctx context.Context) error {
@@ -66,11 +89,13 @@ func (s *OneOff) Run(ctx context.Context) error {
 
 func main() {
 	runnables := []runnable.Runnable{
-		// &Server{deadline: time.Millisecond * 1500},
-		// &Server{deadline: time.Millisecond * 2000},
-		// &Server{deadline: time.Millisecond * 2500},
+		&InitCleanup{time.Second, time.Second},
+		&InitCleanup{time.Second * 2, time.Second * 2},
+
+		&Server{deadline: time.Millisecond * 2500},
 		// &ServerNoShutdown{},
 		// &ServerPanic{},
+
 		runnable.Periodic(runnable.PeriodicOptions{Period: time.Second}, &OneOff{}),
 	}
 
