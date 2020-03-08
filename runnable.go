@@ -36,3 +36,8 @@ func findName(t interface{}) string {
 	}
 	return strings.TrimLeft(fmt.Sprintf("%T", t), "*")
 }
+
+// composeName returns string like `closer(kafka.Producer)`
+func composeName(name string, t interface{}) string {
+	return name + "(" + findName(t) + ")"
+}
