@@ -40,5 +40,5 @@ func (r *periodic) Run(ctx context.Context) (err error) {
 }
 
 func (r *periodic) name() string {
-	return nameOfRunnable(r.runnable)
+	return findName(r.runnable)
 }

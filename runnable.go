@@ -28,9 +28,11 @@ type RunnableInitCleanup interface {
 	Cleanup(context.Context) error
 }
 
-func nameOfRunnable(runnable Runnable) string {
-	if r, ok := runnable.(interface{ name() string }); ok {
-		return r.name()
+func findName(t interface{}) string {
+	if runnable, ok := t.(Runnable); ok {
+		if r, ok := runnable.(interface{ name() string }); ok {
+			return r.name()
+		}
 	}
-	return strings.TrimLeft(fmt.Sprintf("%T", runnable), "*")
+	return strings.TrimLeft(fmt.Sprintf("%T", t), "*")
 }

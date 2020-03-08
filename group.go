@@ -115,7 +115,7 @@ type container struct {
 }
 
 func (c *container) name() string {
-	return nameOfRunnable(c.runnable)
+	return findName(c.runnable)
 }
 
 func (c *container) init(ctx context.Context) error {

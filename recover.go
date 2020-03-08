@@ -40,5 +40,5 @@ func (r *RecoverRunner) Run(ctx context.Context) (err error) {
 }
 
 func (r *RecoverRunner) name() string {
-	return nameOfRunnable(r.runnable)
+	return findName(r.runnable)
 }
