@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/require"
 )
@@ -19,7 +20,7 @@ func (c *dummyCloser) Close() error {
 }
 
 func Test_Closer_Cancellation(t *testing.T) {
-	AssertRunnableRespectCancellation(t, Closer(&dummyCloser{}, nil))
+	AssertRunnableRespectCancellation(t, Closer(&dummyCloser{}, nil), time.Second)
 	AssertRunnableRespectPreCancelledContext(t, Closer(&dummyCloser{}, nil))
 }
 
