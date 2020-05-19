@@ -11,7 +11,7 @@ type PeriodicOptions struct {
 }
 
 // Periodic returns a runnable that will periodically run the runnable passed in argument.
-func Periodic(opts PeriodicOptions, runnable Runnable) Runnable {
+func Periodic(opts PeriodicOptions, runnable Runnable) *periodic {
 	return &periodic{opts, runnable}
 }
 
@@ -22,12 +22,6 @@ type periodic struct {
 
 func (r *periodic) Run(ctx context.Context) (err error) {
 	for {
-		select {
-		case <-ctx.Done():
-			return ctx.Err()
-		default:
-		}
-
 		start := time.Now()
 
 		err := r.runnable.Run(ctx)
@@ -35,10 +29,14 @@ func (r *periodic) Run(ctx context.Context) (err error) {
 			return err
 		}
 
-		time.Sleep(time.Until(start.Add(r.opts.Period)))
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		case <-time.After(time.Until(start.Add(r.opts.Period))):
+		}
 	}
 }
 
 func (r *periodic) name() string {
-	return findName(r.runnable)
+	return composeName("periodic", r.runnable)
 }

@@ -20,6 +20,19 @@ func (*dummyRunnable) Run(ctx context.Context) error {
 	return ctx.Err()
 }
 
+func newCounterRunnable() *counter {
+	return &counter{}
+}
+
+type counter struct {
+	counter int
+}
+
+func (c *counter) Run(ctx context.Context) error {
+	c.counter++
+	return nil
+}
+
 func newDyingRunnable() *dyingRunnable {
 	return &dyingRunnable{}
 }
@@ -69,7 +82,9 @@ func AssertRunnableRespectCancellation(t *testing.T, runnable Runnable, waitTime
 	case <-time.After(waitTime):
 		t.Fatal("did not return after " + waitTime.String())
 	case err := <-errChan:
-		require.NoError(t, err)
+		if !errors.Is(err, context.Canceled) {
+			require.NoError(t, err)
+		}
 	}
 }
 
@@ -88,7 +103,9 @@ func AssertRunnableRespectPreCancelledContext(t *testing.T, runnable Runnable) {
 	case <-time.After(time.Millisecond * 100):
 		t.Fatal("did not return after 100ms")
 	case err := <-errChan:
-		require.NoError(t, err)
+		if !errors.Is(err, context.Canceled) {
+			require.NoError(t, err)
+		}
 	}
 }
 
