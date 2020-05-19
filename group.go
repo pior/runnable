@@ -8,6 +8,7 @@ import (
 )
 
 // Group returns a runnable that concurrently runs all runnables passed in argument.
+// DEPRECATED: use the Manager instead.
 func Group(runnables ...Runnable) *GroupRunner {
 	g := &GroupRunner{ShutdownTimeout: time.Second * 5}
 
