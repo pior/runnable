@@ -21,18 +21,18 @@ type periodic struct {
 }
 
 func (r *periodic) Run(ctx context.Context) (err error) {
+	ticker := time.NewTicker(r.opts.Period)
+
 	for {
-		start := time.Now()
-
-		err := r.runnable.Run(ctx)
-		if err != nil {
-			return err
-		}
-
 		select {
 		case <-ctx.Done():
+			ticker.Stop()
 			return ctx.Err()
-		case <-time.After(time.Until(start.Add(r.opts.Period))):
+		case <-ticker.C:
+			err := r.runnable.Run(ctx)
+			if err != nil {
+				return err
+			}
 		}
 	}
 }
