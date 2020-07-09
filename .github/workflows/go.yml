@@ -1,27 +1,29 @@
-name: Go
-on: [pull_request]
+name: ci
+on:
+  push:
+    tags:
+      - v*
+    branches:
+      - master
+  pull_request:
 
 jobs:
-
-  golangci-lint:
-    name: golangci-lint
+  golangci:
+    name: golang lint
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v1
-
-      - uses: reviewdog/action-golangci-lint@v1
+      - uses: actions/checkout@v2
+      - name: golangci-lint
+        uses: golangci/golangci-lint-action@v1
         with:
-          github_token: ${{ secrets.github_token }}
+          version: v1.27
 
   tests:
     name: golang test
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
-
       - uses: actions/setup-go@v1
         with:
-          go-version: "1.13.x"
-
-
+          go-version: "1.14.x"
       - run: go test -cover -race ./...
