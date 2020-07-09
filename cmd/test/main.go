@@ -13,29 +13,6 @@ func log(runner runnable.Runnable, format string, a ...interface{}) {
 	fmt.Println(fmt.Sprintf("%T: ", runner) + fmt.Sprintf(format, a...))
 }
 
-type InitCleanup struct {
-	initTime    time.Duration
-	cleanupTime time.Duration
-}
-
-func (s *InitCleanup) Init(ctx context.Context) error {
-	time.Sleep(s.initTime)
-	return nil
-}
-
-func (s *InitCleanup) Run(ctx context.Context) error {
-	<-ctx.Done()
-	return nil
-}
-
-func (s *InitCleanup) Cleanup(ctx context.Context) error {
-	time.Sleep(s.cleanupTime)
-	return nil
-}
-
-var _ runnable.RunnableInit = &InitCleanup{}
-var _ runnable.RunnableCleanup = &InitCleanup{}
-
 type ServerNoShutdown struct{}
 
 func (s *ServerNoShutdown) Run(ctx context.Context) error {
@@ -158,7 +135,6 @@ func (s *DB) Run(ctx context.Context) error {
 			s.metrics.Publish()
 		}
 	}
-
 }
 
 func main() {
