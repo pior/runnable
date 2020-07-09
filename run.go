@@ -22,3 +22,8 @@ func Run(runner Runnable) {
 		stdlog.Fatal(err)
 	}
 }
+
+// RunFunc runs a runnable function, and listen to SIGTERM/SIGINT
+func RunFunc(fn RunnableFunc) {
+	Run(Func(fn))
+}
