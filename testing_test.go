@@ -37,9 +37,12 @@ func newDyingRunnable() *dyingRunnable {
 	return &dyingRunnable{}
 }
 
-type dyingRunnable struct{}
+type dyingRunnable struct {
+	counter int
+}
 
-func (*dyingRunnable) Run(ctx context.Context) error {
+func (r *dyingRunnable) Run(ctx context.Context) error {
+	r.counter++
 	return errors.New("dying")
 }
 
@@ -62,8 +65,7 @@ func (e *dummyError) Error() string {
 }
 
 func AssertName(t *testing.T, expectedName string, runnable Runnable) {
-	name := runnable.(interface{ name() string }).name()
-	require.Equal(t, expectedName, name)
+	require.Equal(t, expectedName, findName(runnable))
 }
 
 func AssertRunnableRespectCancellation(t *testing.T, runnable Runnable, waitTime time.Duration) {
