@@ -12,5 +12,5 @@ func main() {
 		Handler: http.RedirectHandler("https://golang.org/", http.StatusPermanentRedirect),
 	}
 
-	runnable.RunGroup(runnable.HTTPServer(server))
+	runnable.Run(runnable.HTTPServer(server))
 }

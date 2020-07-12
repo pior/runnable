@@ -12,22 +12,6 @@ type Runnable interface {
 	Run(context.Context) error
 }
 
-type RunnableInit interface {
-	Runnable
-	Init(context.Context) error
-}
-
-type RunnableCleanup interface {
-	Runnable
-	Cleanup(context.Context) error
-}
-
-type RunnableInitCleanup interface {
-	Runnable
-	Init(context.Context) error
-	Cleanup(context.Context) error
-}
-
 func findName(t interface{}) string {
 	if runnable, ok := t.(Runnable); ok {
 		if r, ok := runnable.(interface{ name() string }); ok {
