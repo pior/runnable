@@ -5,27 +5,58 @@ import (
 	"time"
 )
 
-// RestartOptions configures the behavior of the Restart runnable
-type RestartOptions struct {
-	RestartLimit int // Number of restart after which the runnable will not be restarted.
-	CrashLimit   int // Number of crash after which the runnable will not be restarted.
+type restartConfig struct {
+	restartLimit        int
+	crashLimit          int
+	restartDelay        time.Duration
+	crashBackoffDelayFn func(int) time.Duration
+}
 
-	BackoffSleep      time.Duration // Time to wait before restarting.
-	CrashBackoffSleep time.Duration // Time to wait before restarting after a crash
+type RestartOption func(*restartConfig)
 
-	// CrashLoopRestartLimit int           // Number of restarts in CrashLoopPeriod that triggers the crash loop state.
-	// CrashLoopPeriod       time.Duration // Observation period for the crash loop detection.
-	// CrashLoopBackoffSleep time.Duration // Time to wait before restarting in crash loop.
+// RestartLimit sets a limit on the number of restart after successful execution.
+func RestartLimit(times int) RestartOption {
+	return func(cfg *restartConfig) {
+		cfg.restartLimit = times
+	}
+}
+
+// RestartCrashLimit sets a limit on the number restart after a crash.
+func RestartCrashLimit(times int) RestartOption {
+	return func(cfg *restartConfig) {
+		cfg.crashLimit = times
+	}
+}
+
+// RestartDelay sets the time waited before restarting the runnable after a successful execution.
+func RestartDelay(times time.Duration) RestartOption {
+	return func(cfg *restartConfig) {
+		cfg.restartDelay = times
+	}
+}
+
+// RestartCrashDelayFn sets the function that determine the backoff delay after a crash.
+func RestartCrashDelayFn(fn func(int) time.Duration) RestartOption {
+	return func(cfg *restartConfig) {
+		cfg.crashBackoffDelayFn = fn
+	}
 }
 
 // Restart returns a runnable that runs a runnable and restarts it when it fails, with some conditions.
-func Restart(opts RestartOptions, runnable Runnable) Runnable {
-	return &restart{opts, runnable}
+func Restart(runnable Runnable, opts ...RestartOption) Runnable {
+	cfg := restartConfig{}
+	for _, opt := range opts {
+		opt(&cfg)
+	}
+	if cfg.crashBackoffDelayFn == nil {
+		cfg.crashBackoffDelayFn = crashBackoffDelay
+	}
+	return &restart{runnable, cfg}
 }
 
 type restart struct {
-	opts     RestartOptions
 	runnable Runnable
+	cfg      restartConfig
 }
 
 func (r *restart) Run(ctx context.Context) error {
@@ -34,24 +65,47 @@ func (r *restart) Run(ctx context.Context) error {
 
 	for {
 		err := r.runnable.Run(ctx)
-		if err != nil {
+		isCrash := err != nil
+
+		if isCrash {
 			crashCount++
 		}
 
-		if r.opts.RestartLimit > 0 && restartCount >= r.opts.RestartLimit {
+		if r.cfg.restartLimit > 0 && restartCount >= r.cfg.restartLimit {
+			log.Infof("restart: not restarting (hit the restart limit: %d)", r.cfg.restartLimit)
 			return err
 		}
 
-		if r.opts.CrashLimit > 0 && crashCount >= r.opts.CrashLimit {
+		if r.cfg.crashLimit > 0 && crashCount >= r.cfg.crashLimit {
+			log.Infof("restart: not restarting (hit the crash limit: %d)", r.cfg.crashLimit)
 			return err
 		}
 
 		restartCount++
 
-		if err != nil {
-			time.Sleep(r.opts.CrashBackoffSleep)
-		} else {
-			time.Sleep(r.opts.BackoffSleep)
+		delay := r.cfg.restartDelay
+		if isCrash {
+			delay = r.cfg.crashBackoffDelayFn(crashCount)
 		}
+
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		case <-time.After(delay):
+		}
+	}
+}
+
+func (r *restart) name() string {
+	return composeName("restart", r.runnable)
+}
+
+func crashBackoffDelay(crashCount int) time.Duration {
+	if crashCount <= 3 {
+		return 0
+	} else if crashCount <= 10 {
+		return time.Second * 10
+	} else {
+		return time.Minute
 	}
 }
