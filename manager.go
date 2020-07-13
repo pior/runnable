@@ -2,6 +2,7 @@ package runnable
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strings"
 	"time"
@@ -71,7 +72,7 @@ func (m *manager) Run(ctx context.Context) error {
 		case c := <-completedChan:
 			completed.insert(c)
 
-			if c.err == nil {
+			if c.err == nil || errors.Is(c.err, context.Canceled) {
 				m.log("%s stopped", c.name())
 			} else {
 				m.log("%s stopped with error: %+v", c.name(), c.err)
