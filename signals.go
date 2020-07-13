@@ -31,7 +31,8 @@ func (s *signalRunnable) Run(ctx context.Context) error {
 	go func() {
 		defer signal.Reset(s.signals...)
 
-		<-sigChan
+		sig := <-sigChan
+		log.Infof("signal: received signal %s", sig)
 		cancelFunc()
 	}()
 
