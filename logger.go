@@ -1,35 +1,32 @@
 package runnable
 
 import (
-	stdlog "log"
-	"os"
+	"fmt"
+	"log"
 )
 
-var log = &stdLogger{stdlog.New(os.Stdout, "[RUNNABLE] ", stdlog.Ldate|stdlog.Ltime)}
-
-type Logger interface {
-	// Warnf logs with a warning level.
-	Warnf(format string, args ...interface{})
-
-	// Infof logs with an info level.
-	Infof(format string, args ...interface{})
-
-	// Debugf logs with a debug level.
-	Debugf(format string, args ...interface{})
+var logInfo = func(msg string) {
+	log.Printf("[RUNNABLE] %s", msg)
 }
 
-type stdLogger struct {
-	logger *stdlog.Logger
+// SetLogger changes the logger used by this library. The default is log.Printf.
+//
+// Example for github.com/rs/zerolog:
+//
+//	runnable.SetLogger(func(msg string) {
+// 		log.Info().Str("component", "runnable").Msg(msg)
+//	})
+//
+// Example for github.com/rs/zerolog:
+//
+//	runnable.SetLogger(func(msg string) {
+// 		logrus.WithField("component", "runnable").Info(msg)
+//	})
+//
+func SetLogger(logger func(msg string)) {
+	logInfo = logger
 }
 
-func (l *stdLogger) Warnf(format string, args ...interface{}) {
-	l.logger.Printf("WARN "+format, args...)
-}
-
-func (l *stdLogger) Infof(format string, args ...interface{}) {
-	l.logger.Printf("INFO "+format, args...)
-}
-
-func (l *stdLogger) Debugf(format string, args ...interface{}) {
-	l.logger.Printf("DBUG "+format, args...)
+func logInfof(format string, args ...interface{}) {
+	logInfo(fmt.Sprintf(format, args...))
 }

@@ -14,7 +14,7 @@ type manager struct {
 }
 
 func (m *manager) log(format string, args ...interface{}) {
-	log.Infof("manager: "+format, args...)
+	logInfof("manager: "+format, args...)
 }
 
 func (m *manager) Run(ctx context.Context) error {
