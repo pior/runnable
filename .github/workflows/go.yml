@@ -18,6 +18,14 @@ jobs:
         with:
           version: v1.27
 
+  gomodtidy:
+    name: go mod tidy check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - run: go mod tidy
+      - run: git diff --exit-code -- go.mod go.sum
+
   tests:
     name: golang test
     runs-on: ubuntu-latest
