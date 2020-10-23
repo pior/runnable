@@ -93,7 +93,7 @@ func (m *manager) Run(ctx context.Context) error {
 			m.log("%s is still running", c.name())
 			errs = append(errs, fmt.Sprintf("%s is still running", c.name()))
 		}
-		if c.err != nil && c.err != context.Canceled {
+		if c.err != nil && !errors.Is(c.err, context.Canceled) {
 			errs = append(errs, fmt.Sprintf("%s crashed with %+v", c.name(), c.err))
 		}
 	}
