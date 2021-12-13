@@ -5,7 +5,7 @@ import (
 	"os"
 )
 
-var log = &stdLogger{stdlog.New(os.Stdout, "[RUNNABLE] ", stdlog.Ldate|stdlog.Ltime)}
+var log Logger = &stdLogger{stdlog.New(os.Stdout, "[RUNNABLE] ", stdlog.Ldate|stdlog.Ltime)}
 
 type Logger interface {
 	// Warnf logs with a warning level.
@@ -32,4 +32,9 @@ func (l *stdLogger) Infof(format string, args ...interface{}) {
 
 func (l *stdLogger) Debugf(format string, args ...interface{}) {
 	l.logger.Printf("DBUG "+format, args...)
+}
+
+// SetLogger replaces the default logger.
+func SetLogger(l Logger) {
+	log = l
 }
