@@ -6,12 +6,12 @@ env:
 
 up:
   - go:
-      version: 1.13.5
+      version: 1.17.8
       modules: true
   - custom:
       name: Install golangci-lint
-      met?: which golangci-lint
-      meet: go get -u github.com/golangci/golangci-lint/cmd/golangci-lint
+      met?: go install github.com/golangci/golangci-lint/cmd/golangci-lint@v1.45.2
+      meet: go install github.com/golangci/golangci-lint/cmd/golangci-lint@v1.45.2
 
 commands:
   test:
