@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"time"
 )
 
 type ServerWithShutdown interface {
@@ -12,12 +13,13 @@ type ServerWithShutdown interface {
 }
 
 type httpServer struct {
-	server ServerWithShutdown
+	server          ServerWithShutdown
+	shutdownTimeout time.Duration
 }
 
 // HTTPServer returns a runnable that runs a ServerWithShutdown (like *http.Server).
 func HTTPServer(server ServerWithShutdown) Runnable {
-	return &httpServer{server}
+	return &httpServer{server, time.Second * 30}
 }
 
 func (r *httpServer) Run(ctx context.Context) error {
@@ -33,12 +35,12 @@ func (r *httpServer) Run(ctx context.Context) error {
 
 	select {
 	case <-ctx.Done():
-		log.Debugf("http_server: shutdown for cancellation")
-		shutdownErr = r.server.Shutdown(ctx)
+		log.Debugf("http_server: shutdown (context cancelled)")
+		shutdownErr = r.shutdown()
 		err = <-errChan
 	case err = <-errChan:
-		log.Debugf("http_server: shutdown for error")
-		shutdownErr = r.server.Shutdown(ctx)
+		log.Debugf("http_server: shutdown (error from http.Server)")
+		shutdownErr = r.shutdown()
 	}
 
 	if err == http.ErrServerClosed {
@@ -49,4 +51,12 @@ func (r *httpServer) Run(ctx context.Context) error {
 	}
 
 	return err
+}
+
+func (r *httpServer) shutdown() error {
+	ctx := context.Background()
+	ctx, cancel := context.WithTimeout(ctx, r.shutdownTimeout)
+	defer cancel()
+
+	return r.server.Shutdown(ctx)
 }

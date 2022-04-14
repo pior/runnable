@@ -1,6 +1,5 @@
 # Runnable
 
-
 [![GoDoc](https://godoc.org/github.com/pior/runnable?status.svg)](https://pkg.go.dev/github.com/pior/runnable?tab=doc)
 [![Go Report Card](https://goreportcard.com/badge/github.com/pior/runnable)](https://goreportcard.com/report/github.com/pior/runnable)
 
@@ -35,8 +34,31 @@ func run(ctx context.Context) error {
 }
 ```
 
+## HTTP Server
 
-Example of an HTTP server with other in-process services:
+```go
+package main
+
+import (
+	"net/http"
+
+	"github.com/pior/runnable"
+)
+
+func main() {
+	server := &http.Server{
+		Addr:    "127.0.0.1:8000",
+		Handler: http.RedirectHandler("https://go.dev", http.StatusPermanentRedirect),
+	}
+
+	runnable.Run(runnable.HTTPServer(server))
+}
+```
+
+## Manager: run multiple runnables with dependencies
+
+The Manager starts and stops all runnables while respecting dependencies between them.
+Components with dependencies will be stopped before their dependencies.
 
 ```go
 package main
