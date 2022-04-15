@@ -5,16 +5,17 @@ import (
 )
 
 // ContextValues returns a new context.Context with the values from the parent, without propagating the cancellation.
-// Useful when you want to control when the downstream code is cancelled.
+// Useful when you want to protect an operation that should not be cancelled.
+// Often used with context.WithTimeout() or context.WithDeadline().
 func ContextValues(parent context.Context) context.Context {
-	return valueContext{context.Background(), parent}
+	return valuesCtx{context.Background(), parent}
 }
 
-type valueContext struct {
+type valuesCtx struct {
 	context.Context
 	parent context.Context
 }
 
-func (c valueContext) Value(key interface{}) interface{} {
+func (c valuesCtx) Value(key interface{}) interface{} {
 	return c.parent.Value(key)
 }
