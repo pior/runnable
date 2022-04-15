@@ -138,9 +138,7 @@ func (s *StupidJobQueue) Run(ctx context.Context) error {
 		}
 	}
 }
-
 ```
-
 
 Output:
 
@@ -163,8 +161,6 @@ Task executed: 2
 [RUNNABLE] 2020/10/22 22:42:34 INFO manager: main.StupidJobQueue stopped
 [RUNNABLE] 2020/10/22 22:42:34 INFO manager: shutdown complete
 ```
-
-
 
 ## License
 
