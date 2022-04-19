@@ -69,9 +69,9 @@ func Example() {
 	g.Add(runnable.HTTPServer(server), jobs)
 
 	task := runnable.Func(func(ctx context.Context) error {
-		http.Post("http://127.0.0.1:8080/?id=1", "test/plain", nil)
-		http.Post("http://127.0.0.1:8080/?id=2", "test/plain", nil)
-		http.Post("http://127.0.0.1:8080/?id=3", "test/plain", nil)
+		_, _ = http.Post("http://127.0.0.1:8080/?id=1", "test/plain", nil)
+		_, _ = http.Post("http://127.0.0.1:8080/?id=2", "test/plain", nil)
+		_, _ = http.Post("http://127.0.0.1:8080/?id=3", "test/plain", nil)
 
 		cancel() // simulate a shutdown
 
@@ -86,32 +86,5 @@ func Example() {
 	)
 	g.Add(periodicCleanup, jobs)
 
-	err := g.Build().Run(ctx)
-	if err != nil {
-		panic(err)
-	}
-
-	// Output:
-	// INFO manager: runnable_test.Jobs started
-	// INFO manager: runnable.httpServer started
-	// INFO manager: func(runnable.RunnableFunc) started
-	// INFO manager: periodic(runnable_test.CleanupTask) started
-	// DBUG http_server: listening
-	// Starting job 1
-	// Completed job 1
-	// Starting job 2
-	// Completed job 2
-	// Starting job 3
-	// INFO manager: starting shutdown (context cancelled)
-	// INFO manager: runnable.httpServer cancelled
-	// INFO manager: func(runnable.RunnableFunc) cancelled
-	// INFO manager: periodic(runnable_test.CleanupTask) cancelled
-	// DBUG http_server: shutdown (context cancelled)
-	// INFO manager: periodic(runnable_test.CleanupTask) stopped
-	// INFO manager: func(runnable.RunnableFunc) stopped
-	// INFO manager: runnable.httpServer stopped
-	// INFO manager: runnable_test.Jobs cancelled
-	// Completed job 3
-	// INFO manager: runnable_test.Jobs stopped
-	// INFO manager: shutdown complete
+	runnable.Run(g.Build())
 }
