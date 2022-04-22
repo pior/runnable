@@ -65,10 +65,14 @@ func (e *dummyError) Error() string {
 }
 
 func AssertName(t *testing.T, expectedName string, runnable Runnable) {
+	t.Helper()
+
 	require.Equal(t, expectedName, findName(runnable))
 }
 
 func AssertRunnableRespectCancellation(t *testing.T, runnable Runnable, waitTime time.Duration) {
+	t.Helper()
+
 	ctx := context.Background()
 	ctx, cancelFunc := context.WithCancel(ctx)
 
@@ -91,6 +95,8 @@ func AssertRunnableRespectCancellation(t *testing.T, runnable Runnable, waitTime
 }
 
 func AssertRunnableRespectPreCancelledContext(t *testing.T, runnable Runnable) {
+	t.Helper()
+
 	ctx := context.Background()
 	ctx, cancelFunc := context.WithCancel(ctx)
 	cancelFunc()
@@ -112,6 +118,8 @@ func AssertRunnableRespectPreCancelledContext(t *testing.T, runnable Runnable) {
 }
 
 func AssertTimeout(t *testing.T, waitTime time.Duration, fn func()) {
+	t.Helper()
+
 	wait := make(chan bool)
 
 	go func() {

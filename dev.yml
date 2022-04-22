@@ -14,12 +14,8 @@ up:
       meet: go install github.com/golangci/golangci-lint/cmd/golangci-lint@v1.45.2
 
 commands:
-  test:
-    desc: "poipoi"
-    run: go test -cover -race ./...
-  lint:
-    desc: "poipoi"
-    run: golangci-lint run
+  test: go test -cover -race ./...
+  lint: golangci-lint run
 
 open:
   devbuddy: https://github.com/devbuddy/devbuddy/blob/master/docs/Config.md#config-devyml
