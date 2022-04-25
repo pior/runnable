@@ -6,23 +6,33 @@ import (
 
 // Manager returns a runnable that execute runnables in go routines.
 // Runnables can declare a dependency on another runnable. Dependencies are started first and stopped last.
-func Manager(options *ManagerOptions) *managerBuilder {
-	if options == nil {
-		options = &ManagerOptions{
-			ShutdownTimeout: time.Second * 10,
-		}
+func Manager(opts ...ManagerOption) *managerBuilder {
+	m := &managerBuilder{
+		shutdownTimeout: 10 * time.Second,
 	}
-	return &managerBuilder{options: *options}
+
+	for _, opt := range opts {
+		if opt == nil {
+			continue
+		}
+		opt(m)
+	}
+
+	return m
 }
 
-// ManagerOptions configures the behavior of a Manager.
-type ManagerOptions struct {
-	ShutdownTimeout time.Duration
+// ManagerOption configures the behavior of a Manager.
+type ManagerOption func(*managerBuilder)
+
+func ManagerShutdownTimeout(dur time.Duration) ManagerOption {
+	return func(m *managerBuilder) {
+		m.shutdownTimeout = dur
+	}
 }
 
 type managerBuilder struct {
-	containers []*managerContainer
-	options    ManagerOptions
+	containers      []*managerContainer
+	shutdownTimeout time.Duration
 }
 
 func (m *managerBuilder) Add(runnable Runnable, dependencies ...Runnable) {
@@ -51,5 +61,5 @@ func (m *managerBuilder) insertRunnable(runnable Runnable) (value *managerContai
 }
 
 func (m *managerBuilder) Build() Runnable {
-	return &manager{m.containers, m.options}
+	return &manager{m.containers, m.shutdownTimeout}
 }

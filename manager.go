@@ -9,8 +9,8 @@ import (
 )
 
 type manager struct {
-	containers []*managerContainer
-	options    ManagerOptions
+	containers      []*managerContainer
+	shutdownTimeout time.Duration
 }
 
 func (m *manager) log(format string, args ...interface{}) {
@@ -39,7 +39,7 @@ func (m *manager) Run(ctx context.Context) error {
 	cancelled := newManagerContainerSet()
 	completed := newManagerContainerSet()
 
-	deadline := time.After(m.options.ShutdownTimeout)
+	deadline := time.After(m.shutdownTimeout)
 	ticker := time.NewTicker(time.Millisecond * 10)
 	defer ticker.Stop()
 

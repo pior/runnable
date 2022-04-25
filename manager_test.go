@@ -61,7 +61,7 @@ func TestManager_Dying_Runnable(t *testing.T) {
 }
 
 func TestManager_ShutdownTimeout(t *testing.T) {
-	g := Manager(&ManagerOptions{ShutdownTimeout: time.Second})
+	g := Manager(ManagerShutdownTimeout(time.Second))
 	g.Add(newBlockedRunnable())
 	runner := g.Build()
 
