@@ -72,12 +72,12 @@ func (r *restart) Run(ctx context.Context) error {
 		}
 
 		if r.cfg.restartLimit > 0 && restartCount >= r.cfg.restartLimit {
-			log.Infof("restart: not restarting (hit the restart limit: %d)", r.cfg.restartLimit)
+			log.Printf("restart: not restarting (hit the restart limit: %d)", r.cfg.restartLimit)
 			return err
 		}
 
 		if r.cfg.crashLimit > 0 && crashCount >= r.cfg.crashLimit {
-			log.Infof("restart: not restarting (hit the crash limit: %d)", r.cfg.crashLimit)
+			log.Printf("restart: not restarting (hit the crash limit: %d)", r.cfg.crashLimit)
 			return err
 		}
 

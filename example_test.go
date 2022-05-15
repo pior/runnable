@@ -49,7 +49,7 @@ func (*CleanupTask) Run(ctx context.Context) error {
 }
 
 func Example() {
-	runnable.SetStandardLogger(log.New(os.Stdout, "", 0))
+	runnable.SetLogger(log.New(os.Stdout, "", 0))
 
 	g := runnable.NewManager()
 

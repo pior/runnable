@@ -26,7 +26,7 @@ func (r *httpServer) Run(ctx context.Context) error {
 	errChan := make(chan error)
 
 	go func() {
-		log.Debugf("http_server: listening")
+		log.Printf("http_server: listening")
 		errChan <- r.server.ListenAndServe()
 	}()
 
@@ -35,11 +35,11 @@ func (r *httpServer) Run(ctx context.Context) error {
 
 	select {
 	case <-ctx.Done():
-		log.Debugf("http_server: shutdown (context cancelled)")
+		log.Printf("http_server: shutdown (context cancelled)")
 		shutdownErr = r.shutdown()
 		err = <-errChan
 	case err = <-errChan:
-		log.Debugf("http_server: shutdown (error from http.Server)")
+		log.Printf("http_server: shutdown (error from http.Server)")
 		shutdownErr = r.shutdown()
 	}
 
