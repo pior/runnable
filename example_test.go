@@ -51,7 +51,7 @@ func (*CleanupTask) Run(ctx context.Context) error {
 func Example() {
 	runnable.SetStandardLogger(log.New(os.Stdout, "", 0))
 
-	g := runnable.Manager(nil)
+	g := runnable.NewManager()
 
 	jobs := NewJobs()
 	g.Add(jobs)

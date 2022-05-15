@@ -8,9 +8,69 @@ import (
 	"time"
 )
 
+type AppManager interface {
+	Add(runnable Runnable, dependencies ...Runnable)
+	Build() Runnable
+}
+
+// ManagerOption configures the behavior of a Manager.
+type ManagerOption func(*manager)
+
+func ManagerShutdownTimeout(dur time.Duration) ManagerOption {
+	return func(m *manager) {
+		m.shutdownTimeout = dur
+	}
+}
+
+// NewManager returns a runnable that execute runnables in go routines.
+// Runnables can declare a dependency on another runnable. Dependencies are started first and stopped last.
+func NewManager(opts ...ManagerOption) AppManager {
+	m := &manager{
+		shutdownTimeout: 10 * time.Second,
+	}
+
+	for _, opt := range opts {
+		if opt == nil {
+			continue
+		}
+		opt(m)
+	}
+
+	return m
+}
+
 type manager struct {
 	containers      []*managerContainer
 	shutdownTimeout time.Duration
+}
+
+func (m *manager) Add(runnable Runnable, dependencies ...Runnable) {
+	container := m.insertRunnable(runnable)
+	for _, dep := range dependencies {
+		m.insertRunnable(dep).insertUser(container)
+	}
+}
+
+func (m *manager) findRunnable(runnable Runnable) *managerContainer {
+	for _, container := range m.containers {
+		if container.runnable == runnable {
+			return container
+		}
+	}
+	return nil
+}
+
+func (m *manager) insertRunnable(runnable Runnable) (value *managerContainer) {
+	value = m.findRunnable(runnable)
+	if value == nil {
+		value = newManagerContainer(runnable)
+		m.containers = append(m.containers, value)
+	}
+	return value
+}
+
+func (m *manager) Build() Runnable {
+	return m
 }
 
 func (m *manager) log(format string, args ...interface{}) {

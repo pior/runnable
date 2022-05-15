@@ -29,7 +29,7 @@ func main() {
 		Period: 3 * time.Second,
 	}, monitor)
 
-	g := runnable.Manager()
+	g := runnable.NewManager()
 	g.Add(jobs)
 	g.Add(serverRunner, jobs) // jobs is a dependency
 	g.Add(monitor)

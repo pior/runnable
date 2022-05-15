@@ -38,44 +38,42 @@ func (r *mockRunnable) Run(ctx context.Context) error {
 }
 
 func TestManager_Cancellation(t *testing.T) {
-	g := Manager(nil)
+	g := NewManager()
 	g.Add(newDummyRunnable())
 	AssertRunnableRespectCancellation(t, g.Build(), time.Millisecond*100)
 	AssertRunnableRespectPreCancelledContext(t, g.Build())
 }
 
 func TestManager_Without_Runnable(t *testing.T) {
-	g := Manager(nil)
+	g := NewManager()
 	AssertRunnableRespectCancellation(t, g.Build(), time.Millisecond*100)
 }
 
 func TestManager_Dying_Runnable(t *testing.T) {
-	g := Manager(nil)
+	g := NewManager()
 	g.Add(newDyingRunnable())
-	runner := g.Build()
 
 	AssertTimeout(t, time.Second*1, func() {
-		err := runner.Run(context.Background())
+		err := g.Build().Run(context.Background())
 		require.EqualError(t, err, "manager: runnable.dyingRunnable crashed with dying")
 	})
 }
 
 func TestManager_ShutdownTimeout(t *testing.T) {
-	g := Manager(ManagerShutdownTimeout(time.Second))
+	g := NewManager(ManagerShutdownTimeout(time.Second))
 	g.Add(newBlockedRunnable())
-	runner := g.Build()
 
 	ctx := cancelledContext()
 
 	AssertTimeout(t, time.Second*2, func() {
-		err := runner.Run(ctx)
+		err := g.Build().Run(ctx)
 		require.EqualError(t, err, "manager: runnable.blockedRunnable is still running")
 	})
 
 }
 
 func TestManager(t *testing.T) {
-	g := Manager(nil)
+	g := NewManager()
 
 	web := newMockRunnable()
 	db := newMockRunnable()
