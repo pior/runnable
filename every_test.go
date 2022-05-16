@@ -8,17 +8,17 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func Test_Periodic_Cancellation(t *testing.T) {
-	runner := Periodic(PeriodicOptions{Period: time.Second}, newDummyRunnable())
+func Test_Every_Cancellation(t *testing.T) {
+	runner := Every(newDummyRunnable(), time.Second)
 
 	AssertRunnableRespectCancellation(t, runner, time.Second)
 	AssertRunnableRespectPreCancelledContext(t, runner)
 }
 
-func Test_Periodic(t *testing.T) {
+func Test_Every(t *testing.T) {
 	counterRunnable := newCounterRunnable()
 
-	runner := Periodic(PeriodicOptions{Period: time.Millisecond * 10}, counterRunnable)
+	runner := Every(counterRunnable, time.Millisecond*10)
 
 	ctx, cancel := context.WithTimeout(context.Background(), time.Millisecond*100)
 	defer cancel()
@@ -30,6 +30,6 @@ func Test_Periodic(t *testing.T) {
 	require.LessOrEqual(t, counterRunnable.counter, 10)
 }
 
-func Test_Periodic_Name(t *testing.T) {
-	AssertName(t, "periodic(runnable.dummyRunnable)", Periodic(PeriodicOptions{Period: time.Second}, newDummyRunnable()))
+func Test_Every_Name(t *testing.T) {
+	AssertName(t, "every[1s](runnable.dummyRunnable)", Every(newDummyRunnable(), time.Second))
 }
