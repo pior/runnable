@@ -25,9 +25,7 @@ func main() {
 		fmt.Printf("Task executed: %d\n", jobs.Executed())
 		return nil
 	})
-	monitor = runnable.Periodic(runnable.PeriodicOptions{
-		Period: 3 * time.Second,
-	}, monitor)
+	monitor = runnable.Every(monitor, 3*time.Second)
 
 	g := runnable.NewManager()
 	g.Add(jobs)

@@ -74,11 +74,8 @@ func Example() {
 	})
 	g.Add(task)
 
-	periodicCleanup := runnable.Periodic(
-		runnable.PeriodicOptions{Period: time.Hour},
-		&CleanupTask{},
-	)
-	g.Add(periodicCleanup, jobs)
+	cleanup := runnable.Every(&CleanupTask{}, time.Hour)
+	g.Add(cleanup, jobs)
 
 	runnable.Run(g.Build())
 
