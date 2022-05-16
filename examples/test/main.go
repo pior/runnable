@@ -147,7 +147,7 @@ func main() {
 	db := &DB{metrics: metrics}
 	server := &ServerWithDB{db}
 
-	g := runnable.Manager()
+	g := runnable.NewManager()
 	g.Add(metrics)
 	g.Add(db, metrics)
 	g.Add(server, db)
