@@ -7,15 +7,16 @@ import (
 	"time"
 
 	"github.com/pior/runnable"
+	"github.com/pior/runnable/examples/jobqueue"
 )
 
 func main() {
-	jobs := NewStupidJobQueue()
+	jobs := jobqueue.New()
 
 	server := &http.Server{
 		Addr: "localhost:8000",
 		Handler: http.HandlerFunc(func(rw http.ResponseWriter, r *http.Request) {
-			jobs.Perform(r.URL.Path)
+			jobs.Enqueue(r.URL.Path)
 			fmt.Fprintln(rw, "Job enqueued!")
 		}),
 	}

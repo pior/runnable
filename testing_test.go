@@ -20,9 +20,9 @@ func newDummyRunnable() *dummyRunnable {
 type dummyRunnable struct{}
 
 func (r *dummyRunnable) Run(ctx context.Context) error {
-	Log(r, "started")
+	// Log(r, "DEBUG:started")
 	<-ctx.Done()
-	Log(r, "stopped")
+	// Log(r, "DEBUG:stopped")
 	return ctx.Err()
 }
 
