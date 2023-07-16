@@ -9,6 +9,8 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+func funcTesting(context.Context) error { return nil }
+
 func newDummyRunnable() *dummyRunnable {
 	return &dummyRunnable{}
 }
@@ -62,12 +64,6 @@ type dummyError struct {
 
 func (e *dummyError) Error() string {
 	return e.message
-}
-
-func AssertName(t *testing.T, expectedName string, runnable Runnable) {
-	t.Helper()
-
-	require.Equal(t, expectedName, findName(runnable))
 }
 
 func AssertRunnableRespectCancellation(t *testing.T, runnable Runnable, waitTime time.Duration) {

@@ -22,10 +22,11 @@ func (e *PanicError) Unwrap() error {
 
 // Recover returns a runnable that recovers when a runnable panics and return an error to represent this panic.
 func Recover(runnable Runnable) Runnable {
-	return &RecoverRunner{runnable}
+	return &RecoverRunner{baseWrapper{"recover", runnable}, runnable}
 }
 
 type RecoverRunner struct {
+	baseWrapper
 	runnable Runnable
 }
 
@@ -37,8 +38,4 @@ func (r *RecoverRunner) Run(ctx context.Context) (err error) {
 	}()
 
 	return r.runnable.Run(ctx)
-}
-
-func (r *RecoverRunner) name() string {
-	return findName(r.runnable)
 }

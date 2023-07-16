@@ -33,8 +33,3 @@ func TestRestart_Crash_Restart(t *testing.T) {
 
 	require.Equal(t, 10, counter.counter)
 }
-
-func TestRestart_Name(t *testing.T) {
-	r := Restart(newDummyRunnable())
-	AssertName(t, "restart(runnable.dummyRunnable)", r)
-}
