@@ -2,32 +2,46 @@ package runnable
 
 import (
 	"context"
-	"io"
-	"time"
 )
 
-// CloserOptions configures the behavior of a Closer runnable.
-type CloserOptions struct {
-	Delay time.Duration
+// Closer returns a runnable intended to call a Close method on shutdown.
+func Closer(c interface{ Close() }) Runnable {
+	return &closer{c, func(ctx context.Context) error {
+		c.Close()
+		return nil
+	}}
 }
 
-// Closer returns a runnable that will close what is passed in argument.
-func Closer(object io.Closer, opts *CloserOptions) Runnable {
-	if opts == nil {
-		opts = &CloserOptions{}
-	}
-	return &closer{opts, object}
+// Closer returns a runnable intended to call a Close method on shutdown.
+func CloserErr(c interface{ Close() error }) Runnable {
+	return &closer{c, func(ctx context.Context) error {
+		return c.Close()
+	}}
+}
+
+// Closer returns a runnable intended to call a Close method on shutdown.
+func CloserCtx(c interface{ Close(context.Context) }) Runnable {
+	return &closer{c, func(ctx context.Context) error {
+		c.Close(ctx)
+		return nil
+	}}
+}
+
+// Closer returns a runnable intended to call a Close method on shutdown.
+func CloserCtxErr(c interface{ Close(context.Context) error }) Runnable {
+	return &closer{c, func(ctx context.Context) error {
+		return c.Close(ctx)
+	}}
 }
 
 type closer struct {
-	opts   *CloserOptions
-	object io.Closer
+	c       any
+	closeFn func(context.Context) error
 }
 
 func (c *closer) Run(ctx context.Context) error {
 	<-ctx.Done()
-	time.Sleep(c.opts.Delay)
-	err := c.object.Close()
+	err := c.closeFn(ctx)
 	if err != nil {
 		return &RunnableError{"closer: Close() returned an error", err}
 	}
@@ -35,5 +49,5 @@ func (c *closer) Run(ctx context.Context) error {
 }
 
 func (c *closer) name() string {
-	return composeName("closer", c.object)
+	return composeName("closer", c.c)
 }
