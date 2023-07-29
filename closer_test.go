@@ -20,12 +20,12 @@ func (c *dummyCloser) Close() error {
 }
 
 func Test_Closer_Cancellation(t *testing.T) {
-	AssertRunnableRespectCancellation(t, Closer(&dummyCloser{}, nil), time.Second)
-	AssertRunnableRespectPreCancelledContext(t, Closer(&dummyCloser{}, nil))
+	AssertRunnableRespectCancellation(t, CloserErr(&dummyCloser{}), time.Second)
+	AssertRunnableRespectPreCancelledContext(t, CloserErr(&dummyCloser{}))
 }
 
 func Test_Closer_Name(t *testing.T) {
-	AssertName(t, "closer(runnable.dummyCloser)", Closer(&dummyCloser{}, nil))
+	AssertName(t, "closer(runnable.dummyCloser)", CloserErr(&dummyCloser{}))
 }
 
 func Test_Closer_Close(t *testing.T) {
@@ -34,7 +34,7 @@ func Test_Closer_Close(t *testing.T) {
 
 	closer := &dummyCloser{}
 
-	err := Closer(closer, nil).Run(ctx)
+	err := CloserErr(closer).Run(ctx)
 	require.NoError(t, err)
 	require.Equal(t, 1, closer.called)
 }
@@ -46,7 +46,7 @@ func Test_Closer_Close_Error(t *testing.T) {
 	testErr := &dummyError{"dummy error"}
 	closer := &dummyCloser{err: testErr}
 
-	err := Closer(closer, nil).Run(ctx)
+	err := CloserErr(closer).Run(ctx)
 	require.EqualError(t, err, "closer: Close() returned an error: dummy error")
 	require.IsType(t, &RunnableError{}, err)
 	require.True(t, errors.Is(err, testErr))
