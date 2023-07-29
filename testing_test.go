@@ -3,6 +3,8 @@ package runnable
 import (
 	"context"
 	"errors"
+	stdlog "log"
+	"os"
 	"testing"
 	"time"
 
@@ -17,8 +19,10 @@ func newDummyRunnable() *dummyRunnable {
 
 type dummyRunnable struct{}
 
-func (*dummyRunnable) Run(ctx context.Context) error {
+func (r *dummyRunnable) Run(ctx context.Context) error {
+	Log(r, "started")
 	<-ctx.Done()
+	Log(r, "stopped")
 	return ctx.Err()
 }
 
@@ -135,4 +139,13 @@ func cancelledContext() context.Context {
 	ctx, cancelFunc := context.WithCancel(ctx)
 	cancelFunc()
 	return ctx
+}
+
+func initializeForExample() (context.Context, func()) {
+	ctx := context.Background()
+	ctx, cancel := context.WithTimeout(ctx, 200*time.Millisecond)
+
+	SetLogger(stdlog.New(os.Stdout, "", 0))
+
+	return ctx, cancel
 }
