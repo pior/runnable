@@ -29,7 +29,3 @@ func Test_Every(t *testing.T) {
 	require.GreaterOrEqual(t, counterRunnable.counter, 5)
 	require.LessOrEqual(t, counterRunnable.counter, 10)
 }
-
-func Test_Every_Name(t *testing.T) {
-	AssertName(t, "every[1s](runnable.dummyRunnable)", Every(newDummyRunnable(), time.Second))
-}

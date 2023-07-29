@@ -2,16 +2,20 @@ package runnable
 
 import (
 	"context"
-	"fmt"
 	"time"
 )
 
 // Every returns a runnable that will periodically run the runnable passed in argument.
 func Every(runnable Runnable, period time.Duration) Runnable {
-	return &every{runnable, period}
+	return &every{
+		baseWrapper{"every-" + period.String(), runnable},
+		runnable,
+		period,
+	}
 }
 
 type every struct {
+	baseWrapper
 	runnable Runnable
 	period   time.Duration
 }
@@ -31,8 +35,4 @@ func (e *every) Run(ctx context.Context) (err error) {
 			}
 		}
 	}
-}
-
-func (e *every) name() string {
-	return composeName(fmt.Sprintf("every[%s]", e.period), e.runnable)
 }

@@ -8,13 +8,14 @@ import (
 )
 
 type httpServer struct {
+	baseWrapper
 	server          *http.Server
 	shutdownTimeout time.Duration
 }
 
 // HTTPServer returns a runnable that runs a *http.Server.
 func HTTPServer(server *http.Server) Runnable {
-	return &httpServer{server, time.Second * 30}
+	return &httpServer{baseWrapper{"httpserver", nil}, server, time.Second * 30}
 }
 
 func (r *httpServer) Run(ctx context.Context) error {

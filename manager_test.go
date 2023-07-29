@@ -55,7 +55,7 @@ func TestManager_Dying_Runnable(t *testing.T) {
 
 	AssertTimeout(t, time.Second*1, func() {
 		err := g.Build().Run(context.Background())
-		require.EqualError(t, err, "manager: runnable.dyingRunnable crashed with dying")
+		require.EqualError(t, err, "manager: dyingRunnable crashed with dying")
 	})
 }
 
@@ -67,7 +67,7 @@ func TestManager_ShutdownTimeout(t *testing.T) {
 
 	AssertTimeout(t, time.Second*2, func() {
 		err := g.Build().Run(ctx)
-		require.EqualError(t, err, "manager: runnable.blockedRunnable is still running")
+		require.EqualError(t, err, "manager: blockedRunnable is still running")
 	})
 
 }

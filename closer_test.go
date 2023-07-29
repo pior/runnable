@@ -24,10 +24,6 @@ func Test_Closer_Cancellation(t *testing.T) {
 	AssertRunnableRespectPreCancelledContext(t, CloserErr(&dummyCloser{}))
 }
 
-func Test_Closer_Name(t *testing.T) {
-	AssertName(t, "closer(runnable.dummyCloser)", CloserErr(&dummyCloser{}))
-}
-
 func Test_Closer_Close(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel()

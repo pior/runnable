@@ -51,10 +51,11 @@ func Restart(runnable Runnable, opts ...RestartOption) Runnable {
 	if cfg.crashBackoffDelayFn == nil {
 		cfg.crashBackoffDelayFn = crashBackoffDelay
 	}
-	return &restart{runnable, cfg}
+	return &restart{baseWrapper{"restart", runnable}, runnable, cfg}
 }
 
 type restart struct {
+	baseWrapper
 	runnable Runnable
 	cfg      restartConfig
 }
@@ -94,10 +95,6 @@ func (r *restart) Run(ctx context.Context) error {
 		case <-time.After(delay):
 		}
 	}
-}
-
-func (r *restart) name() string {
-	return composeName("restart", r.runnable)
 }
 
 func crashBackoffDelay(crashCount int) time.Duration {

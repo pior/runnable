@@ -2,7 +2,8 @@ package runnable
 
 import (
 	"context"
-	"fmt"
+	"reflect"
+	"runtime"
 	"strings"
 )
 
@@ -13,15 +14,46 @@ type Runnable interface {
 }
 
 func findName(t interface{}) string {
-	if runnable, ok := t.(Runnable); ok {
-		if r, ok := runnable.(interface{ name() string }); ok {
-			return r.name()
+	var parts []string
+
+	for t != nil {
+		part := findNameFromOne(t)
+		if part != "" {
+			parts = append(parts, part)
 		}
+
+		if r, ok := t.(interface{ RunnableUnwrap() any }); ok {
+			t = r.RunnableUnwrap()
+			continue
+		}
+
+		break
 	}
-	return strings.TrimLeft(fmt.Sprintf("%T", t), "*")
+
+	return strings.Join(parts, "/")
 }
 
-// composeName returns string like `closer(kafka.Producer)`
-func composeName(name string, t interface{}) string {
-	return name + "(" + findName(t) + ")"
+func findNameFromOne(t any) string {
+	if r, ok := t.(interface{ RunnableName() string }); ok {
+		return r.RunnableName()
+	}
+
+	valueOf := reflect.ValueOf(t)
+	if valueOf.Kind() == reflect.Func {
+		return runtime.FuncForPC(valueOf.Pointer()).Name() + "()"
+	}
+	return reflect.Indirect(valueOf).Type().Name()
+}
+
+type baseWrapper struct {
+	name    string
+	wrapped any
+}
+
+func (w *baseWrapper) RunnableName() string {
+	return w.name
+}
+
+func (w *baseWrapper) RunnableUnwrap() any {
+	return w.wrapped
 }
