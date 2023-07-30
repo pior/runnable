@@ -3,7 +3,7 @@ package runnable
 import (
 	"context"
 	"os"
-	"os/signal"
+	ossignal "os/signal"
 	"syscall"
 )
 
@@ -14,25 +14,25 @@ func Signal(runnable Runnable, signals ...os.Signal) Runnable {
 		signals = append(signals, syscall.SIGTERM)
 	}
 
-	return &signalRunnable{runnable, signals}
+	return &signal{runnable, signals}
 }
 
-type signalRunnable struct {
+type signal struct {
 	runnable Runnable
 	signals  []os.Signal
 }
 
-func (s *signalRunnable) Run(ctx context.Context) error {
+func (s *signal) Run(ctx context.Context) error {
 	ctx, cancelFunc := context.WithCancel(ctx)
 
 	sigChan := make(chan os.Signal, 1)
-	signal.Notify(sigChan, s.signals...)
+	ossignal.Notify(sigChan, s.signals...)
 
 	go func() {
-		defer signal.Reset(s.signals...)
+		defer ossignal.Reset(s.signals...)
 
 		sig := <-sigChan
-		log.Printf("signal: received signal %s", sig)
+		Log(s, "received signal %s", sig)
 		cancelFunc()
 	}()
 

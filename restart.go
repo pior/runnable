@@ -29,9 +29,9 @@ func RestartCrashLimit(times int) RestartOption {
 }
 
 // RestartDelay sets the time waited before restarting the runnable after a successful execution.
-func RestartDelay(times time.Duration) RestartOption {
+func RestartDelay(delay time.Duration) RestartOption {
 	return func(cfg *restartConfig) {
-		cfg.restartDelay = times
+		cfg.restartDelay = delay
 	}
 }
 
@@ -65,6 +65,7 @@ func (r *restart) Run(ctx context.Context) error {
 	crashCount := 0
 
 	for {
+		Log(r, "starting (restart=%d crash=%d)", restartCount, crashCount)
 		err := r.runnable.Run(ctx)
 		isCrash := err != nil
 
@@ -73,12 +74,12 @@ func (r *restart) Run(ctx context.Context) error {
 		}
 
 		if r.cfg.restartLimit > 0 && restartCount >= r.cfg.restartLimit {
-			log.Printf("restart: not restarting (hit the restart limit: %d)", r.cfg.restartLimit)
+			Log(r, "not restarting (hit the restart limit: %d)", r.cfg.restartLimit)
 			return err
 		}
 
 		if r.cfg.crashLimit > 0 && crashCount >= r.cfg.crashLimit {
-			log.Printf("restart: not restarting (hit the crash limit: %d)", r.cfg.crashLimit)
+			Log(r, "not restarting (hit the crash limit: %d)", r.cfg.crashLimit)
 			return err
 		}
 
