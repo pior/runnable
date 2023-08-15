@@ -15,6 +15,9 @@ type component struct {
 	services  *group
 }
 
+// Component manages two groups of Runnable, processes and services.
+// Services are started before processes, and stopped after them.
+// The intended purposes is to manage the simplest form of runnable dependencies.
 func Component(processes ...Runnable) *component {
 	return &component{
 		processes: &group{timeout: 30 * time.Second, runnables: processes},
@@ -31,12 +34,12 @@ func (c *component) WithShutdownTimeout(process, service time.Duration) *compone
 
 // Add registers runnables as process. Processes will be shutdown before services.
 func (c *component) Add(runner ...Runnable) {
-	c.processes.runnables = append(c.processes.runnables, runner...)
+	c.processes.add(runner...)
 }
 
 // Add registers runnables as services. Services will be shutdown after processes.
 func (c *component) AddService(service ...Runnable) {
-	c.services.runnables = append(c.services.runnables, service...)
+	c.services.add(service...)
 }
 
 func (c *component) Run(ctx context.Context) error {
@@ -45,17 +48,17 @@ func (c *component) Run(ctx context.Context) error {
 	// Starting
 
 	Log(c, "starting services")
-	c.services.start(ctxValues)
+	c.services.Start(ctxValues)
 
 	Log(c, "starting processes")
-	c.processes.start(ctxValues)
+	c.processes.Start(ctxValues)
 
 	// Waiting for shutdown
 
 	select {
-	case <-c.processes.errors:
-		Log(c, "a runner stopped")
-	case <-c.services.errors:
+	case <-c.processes.WaitForShutdown():
+		Log(c, "a process stopped")
+	case <-c.services.WaitForShutdown():
 		Log(c, "a service stopped")
 	case <-ctx.Done():
 		Log(c, "context cancelled")
@@ -64,10 +67,10 @@ func (c *component) Run(ctx context.Context) error {
 	// shutdown
 
 	Log(c, "shutting down processes")
-	c.processes.stop()
+	c.processes.Stop()
 
 	Log(c, "shutting down services")
-	c.services.stop()
+	c.services.Stop()
 
 	Log(c, "shutdown complete")
 	return ctx.Err()

@@ -2,69 +2,76 @@ package runnable
 
 import (
 	"context"
-	"errors"
-	"sync/atomic"
 	"time"
 )
 
 type group struct {
 	runnables []Runnable
-	running   uint32
-	errors    chan error
-	cancel    func()
 	timeout   time.Duration
+
+	contextCancel func()
+	started       []*StartedRunnable
+	shutdownCh    chan struct{}
+	stoppedCh     chan *StartedRunnable
 }
 
-func (g *group) start(ctx context.Context) {
-	newCtx, cancel := context.WithCancel(ctx)
+func (g *group) add(rs ...Runnable) {
+	g.runnables = append(g.runnables, rs...)
+}
 
-	g.cancel = cancel
-	g.errors = make(chan error)
+// func (g *group) Run(ctx context.Context) error {
+// 	g.Start(ctx)
+
+// 	select {
+// 	case <-ctx.Done():
+// 	case <-g.shutdownCh:
+// 	}
+
+// 	g.waitCh <- struct{}{}
+
+// 	errs := append([]error{ctx.Err()}, g.Stop()...)
+// 	return errors.Join(errs...)
+// }
+
+func (g *group) WaitForShutdown() chan struct{} {
+	return g.shutdownCh
+}
+
+func (g *group) Start(ctx context.Context) {
+	ctx, g.contextCancel = context.WithCancel(ctx)
+
+	g.started = make([]*StartedRunnable, 0, len(g.runnables))
+	g.shutdownCh = make(chan struct{}, len(g.runnables))
+	g.stoppedCh = make(chan *StartedRunnable, len(g.runnables))
 
 	for _, r := range g.runnables {
-		atomic.AddUint32(&g.running, 1)
-		go g.run(newCtx, r)
+		g.started = append(g.started, StartRunnable(ctx, r, g.shutdownCh, g.stoppedCh))
 	}
+
 }
 
-func (g *group) stop() {
-	g.cancel()
+func (g *group) Stop() (groupErrors []error) {
+	g.contextCancel() // stop all other runnings
 
-	if g.running == 0 {
-		return
-	}
+	stopTimeout := time.After(g.timeout)
+	logTicker := time.NewTicker(3 * time.Second)
+	defer logTicker.Stop()
 
-	ticker := time.NewTicker(5 * time.Second)
-	defer ticker.Stop()
-
-	after := time.After(g.timeout)
-
-	for {
+	running := len(g.started)
+	for running > 0 {
 		select {
-		case <-ticker.C:
-			Log(g, "%d still running", g.running)
-		case <-g.errors:
-			if g.running == 0 {
-				return
+		case stopped := <-g.stoppedCh:
+			running--
+			if stopped.err != nil {
+				groupErrors = append(groupErrors, stopped.err)
 			}
-		case <-after:
-			Log(g, "waited %s, %d still running", g.timeout, g.running)
+		case <-logTicker.C:
+			Log(g, "%d still running", running)
+		case <-stopTimeout:
+			Log(g, "waited %s, %d still running", g.timeout, running)
 			return
 		}
 	}
-}
 
-func (g *group) run(ctx context.Context, runnable Runnable) {
-	name := findName(runnable)
-
-	log.Printf("group: %s started", name)
-	err := Recover(runnable).Run(ctx)
-	if err == nil || errors.Is(err, context.Canceled) {
-		log.Printf("group: %s stopped", name)
-	} else {
-		log.Printf("group: %s stopped with error: %+v", name, err)
-	}
-
-	atomic.AddUint32(&g.running, ^uint32(0))
-	g.errors <- err
+	return
 }
