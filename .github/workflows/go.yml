@@ -12,20 +12,20 @@ jobs:
     name: golang lint
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - name: golangci-lint
-        uses: golangci/golangci-lint-action@v2
+        uses: golangci/golangci-lint-action@v4
         with:
-          version: v1.53
+          version: v1.57.1
 
   gomodtidy:
     name: go mod tidy check
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - uses: actions/setup-go@v3
         with:
-          go-version: '1.20'
+          go-version: '1.22'
           check-latest: true
       - run: go mod tidy
       - run: git diff --exit-code -- go.mod go.sum
@@ -34,9 +34,10 @@ jobs:
     name: golang test
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - uses: actions/setup-go@v3
         with:
-          go-version: '1.20'
+          go-version: '1.22'
           check-latest: true
       - run: go test -cover -race ./...
+            
