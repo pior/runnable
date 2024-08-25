@@ -14,8 +14,8 @@ up:
       meet: mkdir -p .devbuddy && echo '*' > .devbuddy/.gitignore
   - custom:
       name: Install golangci-lint
-      met?: test -x .devbuddy/golangci-lint && .devbuddy/golangci-lint --version | grep -q 'v1.57.1'
-      meet: GOBIN=$PWD/.devbuddy go install github.com/golangci/golangci-lint/cmd/golangci-lint@v1.57.1
+      met?: test -x .devbuddy/golangci-lint && .devbuddy/golangci-lint --version | grep -q 'v1.60.3'
+      meet: GOBIN=$PWD/.devbuddy go install github.com/golangci/golangci-lint/cmd/golangci-lint@v1.60.3
 
 commands:
   test: go test -cover -race ./...
