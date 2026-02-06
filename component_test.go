@@ -6,6 +6,29 @@ import (
 	"os"
 )
 
+func ExampleComponent() {
+	ctx, cancel := initializeForExample()
+	defer cancel()
+
+	c := Component()
+	c.AddService(&dummyRunnable{"svc"})
+	c.AddProcess(&dummyRunnable{"proc"})
+
+	_ = c.Run(ctx)
+
+	// Output:
+	// component: starting services
+	// component: starting processes
+	// proc: started
+	// svc: started
+	// component: context cancelled
+	// component: shutting down processes
+	// proc: stopped
+	// component: shutting down services
+	// svc: stopped
+	// component: shutdown complete
+}
+
 func ExampleComponent_cancelled() {
 	ctx, cancel := initializeForExample()
 	defer cancel()

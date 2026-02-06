@@ -57,7 +57,7 @@ func (g *group) Stop() (groupErrors []error) {
 			for _, sr := range g.started {
 				stopped, _ := sr.State()
 				if !stopped {
-					Log(g, "still running: %s", findName(sr.runnable))
+					Log(g, "still running: %s", findName(sr))
 				}
 			}
 		case <-stopTimeout:

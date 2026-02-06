@@ -14,16 +14,22 @@ import (
 func funcTesting(context.Context) error { return nil }
 
 func newDummyRunnable() *dummyRunnable {
-	return &dummyRunnable{}
+	return &dummyRunnable{"dummyRunnable"}
 }
 
-type dummyRunnable struct{}
+type dummyRunnable struct {
+	name string
+}
 
 func (r *dummyRunnable) Run(ctx context.Context) error {
 	// Log(r, "DEBUG:started")
 	<-ctx.Done()
 	// Log(r, "DEBUG:stopped")
 	return ctx.Err()
+}
+
+func (r *dummyRunnable) RunnableName() string {
+	return r.name
 }
 
 func newCounterRunnable() *counter {
