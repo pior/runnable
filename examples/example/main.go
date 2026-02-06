@@ -16,7 +16,7 @@ func main() {
 		Addr: "localhost:8000",
 		Handler: http.HandlerFunc(func(rw http.ResponseWriter, r *http.Request) {
 			jobs.Perform(r.URL.Path)
-			fmt.Fprintln(rw, "Job enqueued!")
+			_, _ = fmt.Fprintln(rw, "Job enqueued!")
 		}),
 	}
 	serverRunner := runnable.HTTPServer(server)
