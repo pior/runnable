@@ -32,7 +32,7 @@ func (c *managerContainer) insertUser(container *managerContainer) {
 }
 
 func (c *managerContainer) name() string {
-	return findName(c.runnable)
+	return runnableName(c.runnable)
 }
 
 func (c *managerContainer) launch(completed chan *managerContainer, dying chan *managerContainer) {

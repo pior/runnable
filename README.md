@@ -103,7 +103,7 @@ Components with dependencies will be stopped before their dependencies.
 
 Example with three components:
 ```go
-g := runnable.Manager(nil)
+g := runnable.NewManager()
 g.Add(jobQueue)
 g.Add(httpServer, jobQueue) // jobs is a dependency
 g.Add(monitor)
@@ -115,20 +115,20 @@ runnable.Run(g.Build())
   <summary markdown="span">Logs of a demo app</summary>
 
 ```shell
-$ go run ./cmd/example
-[RUNNABLE] 2020/10/22 22:42:26 INFO manager: main.JobQueue started
-[RUNNABLE] 2020/10/22 22:42:26 INFO manager: runnable.httpServer started
-[RUNNABLE] 2020/10/22 22:42:26 INFO manager: main.Monitor started
+$ go run ./examples/example
+level=INFO msg=started runnable=manager/JobQueue
+level=INFO msg=started runnable=manager/httpserver
+level=INFO msg=started runnable=manager/Monitor
 ...
-^C[RUNNABLE] 2020/10/22 22:42:34 INFO signal: received signal interrupt
-[RUNNABLE] 2020/10/22 22:42:34 INFO manager: starting shutdown (context cancelled)
-[RUNNABLE] 2020/10/22 22:42:34 INFO manager: runnable.httpServer cancelled
-[RUNNABLE] 2020/10/22 22:42:34 INFO manager: main.Monitor cancelled
-[RUNNABLE] 2020/10/22 22:42:34 INFO manager: main.Monitor stopped
-[RUNNABLE] 2020/10/22 22:42:34 INFO manager: runnable.httpServer stopped
-[RUNNABLE] 2020/10/22 22:42:34 INFO manager: main.JobQueue cancelled
-[RUNNABLE] 2020/10/22 22:42:34 INFO manager: main.JobQueue stopped
-[RUNNABLE] 2020/10/22 22:42:34 INFO manager: shutdown complete
+^Clevel=INFO msg="received signal" runnable=signal/manager signal=interrupt
+level=INFO msg="starting shutdown" runnable=manager reason="context cancelled"
+level=INFO msg=cancelled runnable=manager/httpserver
+level=INFO msg=cancelled runnable=manager/Monitor
+level=INFO msg=stopped runnable=manager/Monitor
+level=INFO msg=stopped runnable=manager/httpserver
+level=INFO msg=cancelled runnable=manager/JobQueue
+level=INFO msg=stopped runnable=manager/JobQueue
+level=INFO msg="shutdown complete" runnable=manager
 ```
 
 </details>

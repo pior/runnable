@@ -65,7 +65,7 @@ func Example() {
 	}
 	g.Add(runnable.HTTPServer(server), jobs)
 
-	task := runnable.Func(func(ctx context.Context) error {
+	task := runnable.FuncNamed("enqueue", func(ctx context.Context) error {
 		_, _ = http.Post("http://127.0.0.1:8080/?id=1", "test/plain", nil)
 		_, _ = http.Post("http://127.0.0.1:8080/?id=2", "test/plain", nil)
 		_, _ = http.Post("http://127.0.0.1:8080/?id=3", "test/plain", nil)
@@ -81,12 +81,12 @@ func Example() {
 
 	// level=INFO msg=started runnable=manager/Jobs
 	// level=INFO msg=started runnable=manager/httpserver
-	// level=INFO msg=started runnable=manager/RunnableFunc
+	// level=INFO msg=started runnable=manager/enqueue
 	// level=INFO msg=started runnable=manager/every-1h0m0s/CleanupTask
 	// level=INFO msg=listening runnable=httpserver addr=127.0.0.1:8080
 	// Starting job 1
 	// Completed job 1
 	// ...
-	// level=INFO msg="starting shutdown" runnable=manager reason="RunnableFunc died"
+	// level=INFO msg="starting shutdown" runnable=manager reason="enqueue died"
 	// level=INFO msg="shutdown complete" runnable=manager
 }

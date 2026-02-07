@@ -14,13 +14,20 @@ func Signal(runnable Runnable, signals ...os.Signal) Runnable {
 		signals = append(signals, syscall.SIGTERM)
 	}
 
-	return &signal{runnable, signals}
+	return &signal{
+		name:     "signal/" + runnableName(runnable),
+		runnable: runnable,
+		signals:  signals,
+	}
 }
 
 type signal struct {
+	name     string
 	runnable Runnable
 	signals  []os.Signal
 }
+
+func (s *signal) runnableName() string { return s.name }
 
 func (s *signal) Run(ctx context.Context) error {
 	ctx, cancelFunc := context.WithCancel(ctx)
@@ -32,7 +39,7 @@ func (s *signal) Run(ctx context.Context) error {
 		defer ossignal.Reset(s.signals...)
 
 		sig := <-sigChan
-		logger.Info("received signal", "runnable", findName(s), "signal", sig)
+		logger.Info("received signal", "runnable", s.name, "signal", sig)
 		cancelFunc()
 	}()
 

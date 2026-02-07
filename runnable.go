@@ -4,56 +4,28 @@ import (
 	"context"
 	"reflect"
 	"runtime"
-	"strings"
 )
 
-// Runnable is the contract for anything that runs with a Go context, respects the concellation contract,
+// Runnable is the contract for anything that runs with a Go context, respects the cancellation contract,
 // and expects the caller to handle errors.
 type Runnable interface {
 	Run(context.Context) error
 }
 
-func findName(t interface{}) string {
-	var parts []string
-
-	for t != nil {
-		part := findNameFromOne(t)
-		if part != "" {
-			parts = append(parts, part)
-		}
-
-		if r, ok := t.(interface{ RunnableUnwrap() any }); ok {
-			t = r.RunnableUnwrap()
-			continue
-		}
-
-		break
-	}
-
-	return strings.Join(parts, "/")
+// namer is implemented by wrappers to provide a name for logging.
+type namer interface {
+	runnableName() string
 }
 
-func findNameFromOne(t any) string {
-	if r, ok := t.(interface{ RunnableName() string }); ok {
-		return r.RunnableName()
+// runnableName returns the name of a runnable for logging.
+// It checks for the namer interface first, then falls back to reflection.
+func runnableName(v any) string {
+	if n, ok := v.(namer); ok {
+		return n.runnableName()
 	}
-
-	valueOf := reflect.ValueOf(t)
+	valueOf := reflect.ValueOf(v)
 	if valueOf.Kind() == reflect.Func {
-		return runtime.FuncForPC(valueOf.Pointer()).Name() + "()"
+		return runtime.FuncForPC(valueOf.Pointer()).Name()
 	}
 	return reflect.Indirect(valueOf).Type().Name()
-}
-
-type baseWrapper struct {
-	name    string
-	wrapped any
-}
-
-func (w *baseWrapper) RunnableName() string {
-	return w.name
-}
-
-func (w *baseWrapper) RunnableUnwrap() any {
-	return w.wrapped
 }
