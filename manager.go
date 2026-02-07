@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"slices"
 	"strings"
 	"time"
 )
@@ -60,6 +61,11 @@ var _ ManagerRegistry = (*manager)(nil)
 // Register registers processes. Processes are the primary runnables of the
 // application. They are cancelled first during shutdown.
 func (m *manager) Register(runners ...Runnable) ManagerRegistry {
+	for _, r := range runners {
+		if slices.Contains(m.processes, r) || slices.Contains(m.services, r) {
+			panic(fmt.Sprintf("runnable %s already registered", runnableName(r)))
+		}
+	}
 	m.processes = append(m.processes, runners...)
 	return m
 }
@@ -68,6 +74,11 @@ func (m *manager) Register(runners ...Runnable) ManagerRegistry {
 // (databases, queues, etc.) that processes depend on. They are cancelled after
 // all processes have stopped.
 func (m *manager) RegisterService(services ...Runnable) ManagerRegistry {
+	for _, s := range services {
+		if slices.Contains(m.processes, s) || slices.Contains(m.services, s) {
+			panic(fmt.Sprintf("runnable %s already registered", runnableName(s)))
+		}
+	}
 	m.services = append(m.services, services...)
 	return m
 }
