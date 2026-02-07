@@ -1,7 +1,7 @@
-<!-- omit in toc -->
 # Runnable
 
-[![GoDoc](https://godoc.org/github.com/pior/runnable?status.svg)](https://pkg.go.dev/github.com/pior/runnable?tab=doc)
+[![Build Status](https://github.com/pior/runnable/actions/workflows/go.yml/badge.svg?branch=master)](https://github.com/pior/runnable/actions/workflows/go.yml)
+[![Go Reference](https://pkg.go.dev/badge/github.com/pior/runnable.svg)](https://pkg.go.dev/github.com/pior/runnable)
 [![Go Report Card](https://goreportcard.com/badge/github.com/pior/runnable)](https://goreportcard.com/report/github.com/pior/runnable)
 
 Tooling to manage the execution of a process based on a `Runnable` interface:
@@ -35,9 +35,9 @@ func run(ctx context.Context) error {
 }
 ```
 
-<!-- omit in toc -->
 ## Tools:
 
+<!-- header list of the tools -->
 - [Process start and shutdown](#process-start-and-shutdown)
 - [Restart](#restart)
 - [HTTP Server](#http-server)
@@ -131,7 +131,6 @@ level=INFO msg="shutdown complete" runnable=manager
 
 </details>
 
-<!-- omit in toc -->
 ## License
 
 The MIT License (MIT)
