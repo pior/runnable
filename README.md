@@ -99,13 +99,14 @@ func main() {
 ### Manager
 
 The `Manager` groups runnables into two tiers: **processes** (foreground work) and **services** (infrastructure).
-On shutdown, processes are stopped first, then services.
+Shutdown is triggered when the context is cancelled or any runnable completes.
+During shutdown, processes are stopped first, then services — ensuring services remain available while processes drain.
 
 ```go
 g := runnable.Manager()
-g.AddService(jobQueue)
-g.Add(httpServer)
-g.Add(monitor)
+g.RegisterService(jobQueue)
+g.Register(httpServer)
+g.Register(monitor)
 
 runnable.Run(g)
 ```

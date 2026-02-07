@@ -9,9 +9,18 @@ import (
 	"time"
 )
 
-// Manager returns a new manager. The manager is a Runnable that manages two groups:
-// processes and services. When shutdown is triggered, processes are stopped first,
-// then services.
+// Manager returns a new manager that coordinates the lifecycle of multiple runnables.
+//
+// Runnables are organized in two tiers: processes (foreground work) and services
+// (infrastructure like databases or queues). Shutdown is triggered when the context
+// is cancelled or any runnable completes. During shutdown, processes are cancelled
+// first, then services, ensuring services remain available while processes drain.
+//
+// Each runnable is wrapped with [Recover] to catch panics. Errors from runnables are
+// collected, except [context.Canceled] which is ignored. A manager is itself a
+// [Runnable], so managers can be nested for independent shutdown ordering.
+//
+// Registering the same runnable twice, or as both a process and a service, panics.
 func Manager() *manager {
 	return &manager{
 		shutdownTimeout: 10 * time.Second,
@@ -60,6 +69,7 @@ var _ ManagerRegistry = (*manager)(nil)
 
 // Register registers processes. Processes are the primary runnables of the
 // application. They are cancelled first during shutdown.
+// Panics if any runnable is already registered.
 func (m *manager) Register(runners ...Runnable) ManagerRegistry {
 	for _, r := range runners {
 		if slices.Contains(m.processes, r) || slices.Contains(m.services, r) {
@@ -73,6 +83,7 @@ func (m *manager) Register(runners ...Runnable) ManagerRegistry {
 // RegisterService registers services. Services are infrastructure runnables
 // (databases, queues, etc.) that processes depend on. They are cancelled after
 // all processes have stopped.
+// Panics if any runnable is already registered.
 func (m *manager) RegisterService(services ...Runnable) ManagerRegistry {
 	for _, s := range services {
 		if slices.Contains(m.processes, s) || slices.Contains(m.services, s) {
