@@ -38,72 +38,90 @@ func (r *mockRunnable) Run(ctx context.Context) error {
 }
 
 func TestManager_Cancellation(t *testing.T) {
-	g := NewManager()
-	g.Add(newDummyRunnable())
-	AssertRunnableRespectCancellation(t, g.Build(), time.Millisecond*100)
-	AssertRunnableRespectPreCancelledContext(t, g.Build())
+	m := Manager()
+	m.Add(newDummyRunnable())
+	AssertRunnableRespectCancellation(t, m, time.Millisecond*100)
+	AssertRunnableRespectPreCancelledContext(t, Manager())
 }
 
 func TestManager_Without_Runnable(t *testing.T) {
-	g := NewManager()
-	AssertRunnableRespectCancellation(t, g.Build(), time.Millisecond*100)
+	m := Manager()
+	AssertRunnableRespectCancellation(t, m, time.Millisecond*100)
 }
 
-func TestManager_Dying_Runnable(t *testing.T) {
-	g := NewManager()
-	g.Add(newDyingRunnable())
+func TestManager_Dying_Process(t *testing.T) {
+	m := Manager()
+	m.Add(newDyingRunnable())
 
 	AssertTimeout(t, time.Second*1, func() {
-		err := g.Build().Run(context.Background())
+		err := m.Run(context.Background())
 		require.EqualError(t, err, "manager: dyingRunnable crashed with dying")
 	})
 }
 
+func TestManager_Dying_Service(t *testing.T) {
+	m := Manager()
+
+	proc := newMockRunnable()
+	m.Add(proc)
+	m.AddService(newDyingRunnable())
+
+	errChan := make(chan error)
+	go func() {
+		errChan <- m.Run(context.Background())
+	}()
+
+	// Process should be cancelled when service dies.
+	<-proc.cancelledChan
+	proc.errChan <- nil
+
+	err := <-errChan
+	require.EqualError(t, err, "manager: dyingRunnable crashed with dying")
+}
+
 func TestManager_ShutdownTimeout(t *testing.T) {
-	g := NewManager(ManagerShutdownTimeout(time.Second))
-	g.Add(newBlockedRunnable())
+	m := Manager().ShutdownTimeout(time.Second)
+	m.Add(newBlockedRunnable())
 
 	ctx := cancelledContext()
 
 	AssertTimeout(t, time.Second*2, func() {
-		err := g.Build().Run(ctx)
+		err := m.Run(ctx)
 		require.EqualError(t, err, "manager: blockedRunnable is still running")
 	})
-
 }
 
-func TestManager(t *testing.T) {
-	g := NewManager()
+func TestManager_ShutdownOrdering(t *testing.T) {
+	m := Manager()
 
-	web := newMockRunnable()
-	db := newMockRunnable()
+	proc := newMockRunnable()
+	svc := newMockRunnable()
 
-	g.Add(db)
-	g.Add(web, db)
+	m.Add(proc)
+	m.AddService(svc)
 
 	errChan := make(chan error)
-
 	ctx, cancel := context.WithCancel(context.Background())
 
 	go func() {
-		errChan <- g.Build().Run(ctx)
+		errChan <- m.Run(ctx)
 	}()
 
-	<-web.calledChan // "web" has started
-	<-db.calledChan  // "db" has started
+	<-proc.calledChan // process has started
+	<-svc.calledChan  // service has started
 
 	cancel() // shutdown the manager
 
-	<-web.cancelledChan // "web" is cancelled
+	<-proc.cancelledChan // process is cancelled
 
 	time.Sleep(time.Millisecond * 100)
-	require.False(t, db.cancelled) // "db" should not be shutdown yet
+	require.False(t, svc.cancelled) // service should NOT be cancelled yet
 
-	web.errChan <- nil // "web" shuts down
+	proc.errChan <- nil // process shuts down
 
-	<-db.cancelledChan // "db" can be cancelled now
+	<-svc.cancelledChan // service can be cancelled now
 
-	db.errChan <- nil // "db" shuts down
+	svc.errChan <- nil // service shuts down
 
 	require.NoError(t, <-errChan)
 }
