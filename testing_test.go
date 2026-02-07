@@ -52,16 +52,6 @@ func (r *dyingRunnable) Run(ctx context.Context) error {
 	return errors.New("dying")
 }
 
-func newBlockedRunnable() *blockedRunnable {
-	return &blockedRunnable{}
-}
-
-type blockedRunnable struct{}
-
-func (*blockedRunnable) Run(ctx context.Context) error {
-	select {}
-}
-
 type dummyError struct {
 	message string
 }
