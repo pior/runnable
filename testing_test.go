@@ -3,7 +3,7 @@ package runnable
 import (
 	"context"
 	"errors"
-	stdlog "log"
+	"log/slog"
 	"os"
 	"testing"
 	"time"
@@ -20,9 +20,9 @@ func newDummyRunnable() *dummyRunnable {
 type dummyRunnable struct{}
 
 func (r *dummyRunnable) Run(ctx context.Context) error {
-	Log(r, "started")
+	logger.Info("started", "runnable", findName(r))
 	<-ctx.Done()
-	Log(r, "stopped")
+	logger.Info("stopped", "runnable", findName(r))
 	return ctx.Err()
 }
 
@@ -145,7 +145,14 @@ func initializeForExample() (context.Context, func()) {
 	ctx := context.Background()
 	ctx, cancel := context.WithTimeout(ctx, 200*time.Millisecond)
 
-	SetLogger(stdlog.New(os.Stdout, "", 0))
+	SetLogger(slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{
+		ReplaceAttr: func(groups []string, a slog.Attr) slog.Attr {
+			if a.Key == slog.TimeKey {
+				return slog.Attr{}
+			}
+			return a
+		},
+	})))
 
 	return ctx, cancel
 }

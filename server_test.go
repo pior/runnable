@@ -18,8 +18,8 @@ func ExampleHTTPServer() {
 	_ = r.Run(ctx)
 
 	// Output:
-	// httpserver: listening on 127.0.0.1:8080
-	// httpserver: shutdown
+	// level=INFO msg=listening runnable=httpserver addr=127.0.0.1:8080
+	// level=INFO msg=shutdown runnable=httpserver
 }
 
 func ExampleHTTPServer_error() {
@@ -36,6 +36,6 @@ func ExampleHTTPServer_error() {
 	_ = r.Run(ctx)
 
 	// Output:
-	// httpserver: listening on INVALID
-	// httpserver: shutdown (err: listen tcp: address INVALID: missing port in address)
+	// level=INFO msg=listening runnable=httpserver addr=INVALID
+	// level=INFO msg=shutdown runnable=httpserver error="listen tcp: address INVALID: missing port in address"
 }

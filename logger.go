@@ -1,29 +1,19 @@
 package runnable
 
-import (
-	stdlog "log"
-	"os"
-)
+import "log/slog"
 
-var log Logger
+var logger *slog.Logger
 
 func init() {
 	SetLogger(nil)
 }
 
-// SetLogger replaces the default logger with a runnable.Logger.
-func SetLogger(l Logger) {
+// SetLogger replaces the default logger with a *slog.Logger.
+// Passing nil resets to slog.Default().
+func SetLogger(l *slog.Logger) {
 	if l == nil {
-		l = stdlog.New(os.Stdout, "[RUNNABLE] ", stdlog.Ldate|stdlog.Ltime)
+		l = slog.Default()
 	}
-	log = l
+	logger = l
 }
 
-type Logger interface {
-	Printf(format string, args ...any)
-}
-
-// Log logs a formatted message, prefixed by the runnable chain.
-func Log(self any, format string, args ...any) {
-	log.Printf(findName(self)+": "+format, args...)
-}

@@ -18,10 +18,10 @@ func ExampleRestart() {
 	_ = r.Run(ctx)
 
 	// Output:
-	// restart/dyingRunnable: starting (restart=0 crash=0)
-	// restart/dyingRunnable: starting (restart=1 crash=1)
-	// restart/dyingRunnable: starting (restart=2 crash=2)
-	// restart/dyingRunnable: not restarting (hit the crash limit: 3)
+	// level=INFO msg=starting runnable=restart/dyingRunnable restart=0 crash=0
+	// level=INFO msg=starting runnable=restart/dyingRunnable restart=1 crash=1
+	// level=INFO msg=starting runnable=restart/dyingRunnable restart=2 crash=2
+	// level=INFO msg="not restarting" runnable=restart/dyingRunnable reason="crash limit" limit=3
 }
 
 func TestRestart_Cancellation(t *testing.T) {
