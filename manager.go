@@ -44,17 +44,30 @@ func (m *manager) ShutdownTimeout(dur time.Duration) *manager {
 	return m
 }
 
-// Add registers processes. Processes are the primary runnables of the application.
-// They are cancelled first during shutdown.
-func (m *manager) Add(runners ...Runnable) *manager {
+// ManagerRegistry is the interface for registering runnables with a Manager.
+type ManagerRegistry interface {
+	// Register registers processes. Processes are the primary runnables of the
+	// application. They are cancelled first during shutdown.
+	Register(runners ...Runnable) ManagerRegistry
+	// RegisterService registers services. Services are infrastructure runnables
+	// (databases, queues, etc.) that processes depend on. They are cancelled after
+	// all processes have stopped.
+	RegisterService(services ...Runnable) ManagerRegistry
+}
+
+var _ ManagerRegistry = (*manager)(nil)
+
+// Register registers processes. Processes are the primary runnables of the
+// application. They are cancelled first during shutdown.
+func (m *manager) Register(runners ...Runnable) ManagerRegistry {
 	m.processes = append(m.processes, runners...)
 	return m
 }
 
-// AddService registers services. Services are infrastructure runnables (databases,
-// queues, etc.) that processes depend on. They are cancelled after all processes
-// have stopped.
-func (m *manager) AddService(services ...Runnable) *manager {
+// RegisterService registers services. Services are infrastructure runnables
+// (databases, queues, etc.) that processes depend on. They are cancelled after
+// all processes have stopped.
+func (m *manager) RegisterService(services ...Runnable) ManagerRegistry {
 	m.services = append(m.services, services...)
 	return m
 }

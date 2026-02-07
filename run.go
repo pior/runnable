@@ -8,7 +8,7 @@ import (
 // RunGroup runs all runnables in a Manager, and listen to SIGTERM/SIGINT
 func RunGroup(runners ...Runnable) {
 	m := Manager()
-	m.Add(runners...)
+	m.Register(runners...)
 	Run(m)
 }
 

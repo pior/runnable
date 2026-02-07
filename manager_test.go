@@ -39,7 +39,7 @@ func (r *mockRunnable) Run(ctx context.Context) error {
 
 func TestManager_Cancellation(t *testing.T) {
 	m := Manager()
-	m.Add(newDummyRunnable())
+	m.Register(newDummyRunnable())
 	AssertRunnableRespectCancellation(t, m, time.Millisecond*100)
 	AssertRunnableRespectPreCancelledContext(t, Manager())
 }
@@ -51,7 +51,7 @@ func TestManager_Without_Runnable(t *testing.T) {
 
 func TestManager_Dying_Process(t *testing.T) {
 	m := Manager()
-	m.Add(newDyingRunnable())
+	m.Register(newDyingRunnable())
 
 	AssertTimeout(t, time.Second*1, func() {
 		err := m.Run(context.Background())
@@ -63,8 +63,8 @@ func TestManager_Dying_Service(t *testing.T) {
 	m := Manager()
 
 	proc := newMockRunnable()
-	m.Add(proc)
-	m.AddService(newDyingRunnable())
+	m.Register(proc)
+	m.RegisterService(newDyingRunnable())
 
 	errChan := make(chan error)
 	go func() {
@@ -81,7 +81,7 @@ func TestManager_Dying_Service(t *testing.T) {
 
 func TestManager_ShutdownTimeout(t *testing.T) {
 	m := Manager().ShutdownTimeout(time.Second)
-	m.Add(newBlockedRunnable())
+	m.Register(newBlockedRunnable())
 
 	ctx := cancelledContext()
 
@@ -97,8 +97,8 @@ func TestManager_ShutdownOrdering(t *testing.T) {
 	proc := newMockRunnable()
 	svc := newMockRunnable()
 
-	m.Add(proc)
-	m.AddService(svc)
+	m.Register(proc)
+	m.RegisterService(svc)
 
 	errChan := make(chan error)
 	ctx, cancel := context.WithCancel(context.Background())

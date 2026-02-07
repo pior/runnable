@@ -28,9 +28,9 @@ func main() {
 	monitor = runnable.Every(monitor, 3*time.Second)
 
 	g := runnable.Manager()
-	g.AddService(jobs)
-	g.Add(serverRunner)
-	g.Add(monitor)
+	g.RegisterService(jobs)
+	g.Register(serverRunner)
+	g.Register(monitor)
 
 	runnable.Run(g)
 }
