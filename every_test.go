@@ -2,7 +2,9 @@ package runnable
 
 import (
 	"context"
+	"sync/atomic"
 	"testing"
+	"testing/synctest"
 	"time"
 
 	"github.com/stretchr/testify/require"
@@ -16,16 +18,27 @@ func Test_Every_Cancellation(t *testing.T) {
 }
 
 func Test_Every(t *testing.T) {
-	counterRunnable := newCounterRunnable()
+	synctest.Test(t, func(t *testing.T) {
+		var count atomic.Int32
+		counter := Func(func(ctx context.Context) error {
+			count.Add(1)
+			return nil
+		})
+		runner := Every(counter, 10*time.Second)
 
-	runner := Every(counterRunnable, time.Millisecond*10)
+		ctx, cancel := context.WithCancel(context.Background())
 
-	ctx, cancel := context.WithTimeout(context.Background(), time.Millisecond*100)
-	defer cancel()
+		errChan := make(chan error, 1)
+		go func() {
+			errChan <- runner.Run(ctx)
+		}()
 
-	err := runner.Run(ctx)
-	require.EqualError(t, err, "context deadline exceeded")
+		// Advance time through 3 ticks.
+		time.Sleep(30*time.Second + 1)
+		require.Equal(t, int32(3), count.Load())
 
-	require.GreaterOrEqual(t, counterRunnable.counter, 5)
-	require.LessOrEqual(t, counterRunnable.counter, 10)
+		cancel()
+		err := <-errChan
+		require.EqualError(t, err, "context canceled")
+	})
 }

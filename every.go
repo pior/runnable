@@ -22,7 +22,7 @@ type every struct {
 
 func (e *every) runnableName() string { return e.name }
 
-func (e *every) Run(ctx context.Context) (err error) {
+func (e *every) Run(ctx context.Context) error {
 	ticker := time.NewTicker(e.period)
 
 	for {
