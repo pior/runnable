@@ -28,8 +28,8 @@ func Test_runnableName(t *testing.T) {
 		runnableName(Restart(newDummyRunnable())),
 	)
 
-	require.Equal(t, "every-0s/dummyRunnable",
-		runnableName(Every(newDummyRunnable(), 0)),
+	require.Equal(t, "schedule/dummyRunnable",
+		runnableName(Schedule(newDummyRunnable(), Every(0))),
 	)
 
 	require.Equal(t, "recover/dummyRunnable",

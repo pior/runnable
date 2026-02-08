@@ -25,7 +25,7 @@ func main() {
 		fmt.Printf("Task executed: %d\n", jobs.Executed())
 		return nil
 	})
-	monitor = runnable.Every(monitor, 3*time.Second)
+	monitor = runnable.Schedule(monitor, runnable.Every(3*time.Second))
 
 	g := runnable.Manager()
 	g.RegisterService(jobs)

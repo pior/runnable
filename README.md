@@ -4,7 +4,7 @@
 [![Go Reference](https://pkg.go.dev/badge/github.com/pior/runnable.svg)](https://pkg.go.dev/github.com/pior/runnable)
 [![Go Report Card](https://goreportcard.com/badge/github.com/pior/runnable)](https://goreportcard.com/report/github.com/pior/runnable)
 
-A Go library for orchestrating long-running processes with clean shutdown. Everything builds on a single interface:
+A zero-dependency Go library for orchestrating long-running processes with clean shutdown. Everything builds on a single interface:
 
 ```go
 type Runnable interface {
@@ -75,7 +75,7 @@ Wrappers compose behavior around a `Runnable`:
 |---------|-------------|
 | `HTTPServer(server)` | Start and gracefully shut down a `*http.Server` |
 | `Restart(r, opts...)` | Auto-restart on failure, with configurable limits and delays |
-| `Every(r, duration)` | Run periodically |
+| `Schedule(r, specs...)` | Run on a schedule: intervals, hourly, daily, or custom |
 | `Recover(r)` | Catch panics and return them as errors |
 | `Signal(r, signals...)` | Cancel context on OS signals |
 | `Closer(c)` | Call `Close()` on context cancellation |

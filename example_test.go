@@ -74,7 +74,7 @@ func Example() {
 	})
 	g.Register(task)
 
-	cleanup := runnable.Every(&CleanupTask{}, time.Hour)
+	cleanup := runnable.Schedule(&CleanupTask{}, runnable.Hourly())
 	g.Register(cleanup)
 
 	runnable.Run(g)
@@ -82,7 +82,7 @@ func Example() {
 	// level=INFO msg=started runnable=manager/Jobs
 	// level=INFO msg=started runnable=manager/httpserver
 	// level=INFO msg=started runnable=manager/enqueue
-	// level=INFO msg=started runnable=manager/every-1h0m0s/CleanupTask
+	// level=INFO msg=started runnable=manager/schedule/CleanupTask
 	// level=INFO msg=listening runnable=httpserver addr=127.0.0.1:8080
 	// Starting job 1
 	// Completed job 1
