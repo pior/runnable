@@ -43,13 +43,14 @@ A `Manager` is itself a `Runnable`, so managers can be nested for independent sh
 $ go run ./examples/example/
 level=INFO msg=started runnable=manager/StupidJobQueue
 level=INFO msg=started runnable=manager/httpserver
-level=INFO msg=started runnable=manager/every-3s/RunnableFunc
+level=INFO msg=listening runnable=httpserver addr=localhost:8000
 ...
 ^C
-level=INFO msg="signal received" runnable=signal signal=interrupt
+level=INFO msg="received signal" runnable=signal/manager signal=interrupt
 level=INFO msg="starting shutdown" runnable=manager reason="context cancelled"
+level=INFO msg="shutting down" runnable=httpserver
+level=INFO msg=stopped runnable=httpserver
 level=INFO msg=stopped runnable=manager/httpserver
-level=INFO msg=stopped runnable=manager/every-3s/RunnableFunc
 level=INFO msg=stopped runnable=manager/StupidJobQueue
 level=INFO msg="shutdown complete" runnable=manager
 ```
