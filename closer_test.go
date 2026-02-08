@@ -2,7 +2,6 @@ package runnable
 
 import (
 	"context"
-	"errors"
 	"testing"
 	"time"
 
@@ -66,8 +65,8 @@ func Test_Closer_Close_Error(t *testing.T) {
 
 	err := CloserErr(closer).Run(ctx)
 	require.EqualError(t, err, "closer: Close() returned an error: dummy error")
-	require.IsType(t, &RunnableError{}, err)
-	require.True(t, errors.Is(err, testErr))
+	require.ErrorAs(t, err, new(*RunnableError))
+	require.ErrorIs(t, err, testErr)
 
 	require.Equal(t, 1, closer.called)
 }
@@ -106,7 +105,7 @@ func Test_CloserCtxErr(t *testing.T) {
 
 		err := CloserCtxErr(closer).Run(ctx)
 		require.EqualError(t, err, "closer: Close() returned an error: close failed")
-		require.True(t, errors.Is(err, testErr))
+		require.ErrorIs(t, err, testErr)
 		require.Equal(t, 1, closer.called)
 		require.NoError(t, closer.ctxErr, "context passed to Close should not be cancelled")
 	})

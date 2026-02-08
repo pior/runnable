@@ -4,89 +4,80 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
-	"net/http"
 	"os"
 	"time"
 
 	"github.com/pior/runnable"
 )
 
-func NewJobs() *Jobs {
-	return &Jobs{queue: make(chan string)}
-}
-
-type Jobs struct {
-	queue chan string
-}
-
-func (s *Jobs) Perform(id string) {
-	s.queue <- id
-}
-
-// Run executes enqueued jobs, drains the queue and quits.
-func (s *Jobs) Run(ctx context.Context) error {
-	for {
-		select {
-		case id := <-s.queue:
-			fmt.Printf("Starting job %s\n", id)
-			time.Sleep(time.Second)
-			fmt.Printf("Completed job %s\n", id)
-
-		default:
-			if err := ctx.Err(); err != nil {
-				close(s.queue)
-				return err
+// exampleLogger returns a text logger writing to stdout without timestamps,
+// suitable for deterministic testable examples.
+func exampleLogger() *slog.Logger {
+	return slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{
+		ReplaceAttr: func(_ []string, a slog.Attr) slog.Attr {
+			if a.Key == slog.TimeKey {
+				return slog.Attr{}
 			}
-		}
-	}
+			return a
+		},
+	}))
 }
 
-type CleanupTask struct{}
+// JobQueue is a long-running service that processes background jobs.
+type JobQueue struct{}
 
-func (*CleanupTask) Run(ctx context.Context) error {
+func (q *JobQueue) Run(ctx context.Context) error {
 	<-ctx.Done()
 	return nil
 }
 
-func Example() {
-	runnable.SetLogger(slog.New(slog.NewTextHandler(os.Stdout, nil)))
+func (q *JobQueue) Enqueue(job string) {
+	fmt.Println("JobQueue: " + job)
+}
 
-	g := runnable.Manager()
+// CleanupTask enqueues a cleanup job on each execution.
+type CleanupTask struct {
+	jobs *JobQueue
+	runs int
+	done chan struct{}
+}
 
-	jobs := NewJobs()
-	g.RegisterService(jobs)
-
-	server := &http.Server{
-		Addr: "127.0.0.1:8080",
-		Handler: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			id := r.URL.Query().Get("id")
-			jobs.Perform(id)
-		}),
+func (t *CleanupTask) Run(_ context.Context) error {
+	t.runs++
+	t.jobs.Enqueue(fmt.Sprintf("cleanup-%d", t.runs))
+	if t.runs >= 3 {
+		close(t.done)
 	}
-	g.Register(runnable.HTTPServer(server))
+	return nil
+}
 
-	task := runnable.Func(func(ctx context.Context) error {
-		_, _ = http.Post("http://127.0.0.1:8080/?id=1", "test/plain", nil)
-		_, _ = http.Post("http://127.0.0.1:8080/?id=2", "test/plain", nil)
-		_, _ = http.Post("http://127.0.0.1:8080/?id=3", "test/plain", nil)
+func Example() {
+	runnable.SetLogger(exampleLogger())
 
-		return nil // quit right away, will trigger a shutdown
-	}).Name("enqueue")
-	g.Register(task)
+	jobs := &JobQueue{}
+	done := make(chan struct{})
+	cleanup := &CleanupTask{jobs: jobs, done: done}
 
-	cleanup := runnable.Schedule(&CleanupTask{}, runnable.Hourly())
-	g.Register(cleanup)
+	m := runnable.Manager()
+	m.RegisterService(jobs)
+	m.Register(runnable.Schedule(cleanup, runnable.Every(500*time.Millisecond)))
+	m.Register(runnable.Func(func(_ context.Context) error {
+		<-done
+		return nil
+	}).Name("app"))
 
-	runnable.Run(g)
+	runnable.Run(m)
 
-	// level=INFO msg="manager/Jobs: started"
-	// level=INFO msg="manager/httpserver: started"
-	// level=INFO msg="manager/enqueue: started"
+	// Output:
+	// level=INFO msg="manager/JobQueue: started"
 	// level=INFO msg="manager/schedule/CleanupTask: started"
-	// level=INFO msg="httpserver: listening" addr=127.0.0.1:8080
-	// Starting job 1
-	// Completed job 1
-	// ...
-	// level=INFO msg="manager: starting shutdown" reason="enqueue died"
+	// level=INFO msg="manager/app: started"
+	// JobQueue: cleanup-1
+	// JobQueue: cleanup-2
+	// JobQueue: cleanup-3
+	// level=INFO msg="manager/app: stopped"
+	// level=INFO msg="manager: starting shutdown" reason="app died"
+	// level=INFO msg="manager/schedule/CleanupTask: stopped"
+	// level=INFO msg="manager/JobQueue: stopped"
 	// level=INFO msg="manager: shutdown complete"
 }
