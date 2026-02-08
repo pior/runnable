@@ -21,11 +21,13 @@ func main() {
 	}
 	serverRunner := runnable.HTTPServer(server)
 
-	monitor := runnable.Func(func(ctx context.Context) error {
-		fmt.Printf("Task executed: %d\n", jobs.Executed())
-		return nil
-	})
-	monitor = runnable.Schedule(monitor, runnable.Every(3*time.Second))
+	monitor := runnable.Schedule(
+		runnable.Func(func(ctx context.Context) error {
+			fmt.Printf("Task executed: %d\n", jobs.Executed())
+			return nil
+		}),
+		runnable.Every(3*time.Second),
+	)
 
 	g := runnable.Manager()
 	g.RegisterService(jobs)

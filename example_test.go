@@ -65,13 +65,13 @@ func Example() {
 	}
 	g.Register(runnable.HTTPServer(server))
 
-	task := runnable.FuncNamed("enqueue", func(ctx context.Context) error {
+	task := runnable.Func(func(ctx context.Context) error {
 		_, _ = http.Post("http://127.0.0.1:8080/?id=1", "test/plain", nil)
 		_, _ = http.Post("http://127.0.0.1:8080/?id=2", "test/plain", nil)
 		_, _ = http.Post("http://127.0.0.1:8080/?id=3", "test/plain", nil)
 
 		return nil // quit right away, will trigger a shutdown
-	})
+	}).Name("enqueue")
 	g.Register(task)
 
 	cleanup := runnable.Schedule(&CleanupTask{}, runnable.Hourly())

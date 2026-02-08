@@ -17,7 +17,7 @@ func Test_runnableName(t *testing.T) {
 	)
 
 	require.Equal(t, "custom-name",
-		runnableName(FuncNamed("custom-name", funcTesting)),
+		runnableName(Func(funcTesting).Name("custom-name")),
 	)
 
 	require.Equal(t, "dummyRunnable",
