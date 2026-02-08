@@ -13,11 +13,34 @@ type httpServer struct {
 	shutdownTimeout time.Duration
 }
 
+var _ Runnable = (*httpServer)(nil)
+
 func (r *httpServer) runnableName() string { return r.name }
 
-// HTTPServer returns a runnable that runs a *http.Server.
-func HTTPServer(server *http.Server) Runnable {
-	return &httpServer{"httpserver", server, time.Second * 30}
+// HTTPServer returns a runnable that runs a [*http.Server].
+//
+// On context cancellation, it calls [http.Server.Shutdown] to gracefully drain
+// in-flight requests before returning. The shutdown timeout defaults to 30 seconds
+// and can be configured with [httpServer.ShutdownTimeout].
+func HTTPServer(server *http.Server) *httpServer {
+	return &httpServer{
+		name:            "httpserver",
+		server:          server,
+		shutdownTimeout: 30 * time.Second,
+	}
+}
+
+// Name sets the runnable name, used in log messages. Defaults to "httpserver".
+func (r *httpServer) Name(name string) *httpServer {
+	r.name = name
+	return r
+}
+
+// ShutdownTimeout sets the maximum time allowed for graceful shutdown.
+// Defaults to 30 seconds.
+func (r *httpServer) ShutdownTimeout(dur time.Duration) *httpServer {
+	r.shutdownTimeout = dur
+	return r
 }
 
 func (r *httpServer) Run(ctx context.Context) error {
@@ -33,26 +56,29 @@ func (r *httpServer) Run(ctx context.Context) error {
 
 	select {
 	case <-ctx.Done():
-		logger.Info("shutdown", "runnable", r.name)
+		logger.Info("shutting down", "runnable", r.name)
 		shutdownErr = r.shutdown()
 		err = <-errChan
+		logger.Info("stopped", "runnable", r.name)
 	case err = <-errChan:
-		logger.Info("shutdown", "runnable", r.name, "error", err)
-		shutdownErr = r.shutdown()
+		logger.Info("stopped with error", "runnable", r.name, "error", err)
+		// Server stopped on its own — no Shutdown needed.
 	}
 
 	if err == http.ErrServerClosed {
 		err = nil
 	}
-	if err == nil && shutdownErr != nil {
-		err = fmt.Errorf("server shutdown: %w", shutdownErr)
+	if err != nil {
+		return err
 	}
-
-	return err
+	if shutdownErr != nil {
+		return fmt.Errorf("server shutdown: %w", shutdownErr)
+	}
+	return nil
 }
 
 func (r *httpServer) shutdown() error {
-	ctx := context.Background()
+	ctx := context.Background() // only used for timeout in Shutdown.
 	ctx, cancel := context.WithTimeout(ctx, r.shutdownTimeout)
 	defer cancel()
 
