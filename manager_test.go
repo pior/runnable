@@ -78,10 +78,10 @@ func TestManager_Dying_Service(t *testing.T) {
 func TestManager_ShutdownTimeout(t *testing.T) {
 	synctest.Test(t, func(t *testing.T) {
 		unblock := make(chan struct{})
-		blocked := FuncNamed("blockedRunnable", func(ctx context.Context) error {
+		blocked := Func(func(ctx context.Context) error {
 			<-unblock
 			return nil
-		})
+		}).Name("blockedRunnable")
 
 		m := Manager().ShutdownTimeout(time.Second)
 		m.Register(blocked)
