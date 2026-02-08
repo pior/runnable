@@ -1,120 +1,45 @@
-<!-- omit in toc -->
 # Runnable
 
-[![GoDoc](https://godoc.org/github.com/pior/runnable?status.svg)](https://pkg.go.dev/github.com/pior/runnable?tab=doc)
+[![Build Status](https://github.com/pior/runnable/actions/workflows/go.yml/badge.svg?branch=master)](https://github.com/pior/runnable/actions/workflows/go.yml)
+[![Go Reference](https://pkg.go.dev/badge/github.com/pior/runnable.svg)](https://pkg.go.dev/github.com/pior/runnable)
 [![Go Report Card](https://goreportcard.com/badge/github.com/pior/runnable)](https://goreportcard.com/report/github.com/pior/runnable)
 
-Tooling to manage the execution of a process based on a `Runnable` interface:
+A Go library for orchestrating long-running processes with clean shutdown. Everything builds on a single interface:
 
 ```go
 type Runnable interface {
-	Run(context.Context) error
+    Run(context.Context) error
 }
 ```
 
-And a simpler `RunnableFunc` interface:
+Shutdown is driven by context cancellation. When the context is cancelled, each runnable stops gracefully and returns.
 
-```go
-type RunnableFunc func(context.Context) error
-```
+## Manager
 
-Example of an implementation of the command "yes":
+The `Manager` orchestrates multiple runnables with ordered shutdown. Runnables are organized in two tiers:
 
-```go
-func main() {
-	runnable.RunFunc(run)
-}
+- **Processes** — the primary work (HTTP servers, workers, scheduled tasks)
+- **Services** — infrastructure that processes depend on (databases, queues, metrics)
 
-func run(ctx context.Context) error {
-	for {
-		if ctx.Err() != nil {
-			return ctx.Err()
-		}
-		fmt.Println("y")
-	}
-}
-```
+When shutdown is triggered (context cancelled or any runnable completes), processes are stopped first, then services. This ensures services remain available while processes drain.
 
-<!-- omit in toc -->
-## Tools:
-
-- [Process start and shutdown](#process-start-and-shutdown)
-- [Restart](#restart)
-- [HTTP Server](#http-server)
-- [Manager](#manager)
-
-### Process start and shutdown
-
-To trigger a clean shutdown, a process must react to the termination signals (SIGINT, SIGTERM).
-
-The `Run()` method is intended to be the process entrypoint:
-- it immediately executes the runnable
-- it cancels the context.Context when a **termination signal** is received
-- it calls **log.Fatal with the error** if the runnable returned one
-
-Example:
 ```go
 func main() {
-	runnable.Run(
-		app.Build(),
-	)
+    m := runnable.Manager()
+    m.RegisterService(jobQueue)
+    m.Register(runnable.HTTPServer(server))
+    m.Register(monitor)
+
+    runnable.Run(m)
 }
 ```
 
-The `RunFunc()` method is also provided for convenience.
-
-### Restart
-
-The `Restart` runnable ensure that a component is running, even if it stops or crashes.
-
-Example:
-```go
-func main() {
-	runnable.Run(
-		runnable.Restart(
-			task.New(),
-		),
-	)
-}
-```
-
-### HTTP Server
-
-The `HTTPServer` runnable starts and gracefully shutdowns a `*http.Server`.
-
-Example:
-```go
-func main() {
-	server := &http.Server{
-		Addr:    "127.0.0.1:8000",
-		Handler: http.RedirectHandler("https://go.dev", 307),
-	}
-
-	runnable.Run(
-		runnable.HTTPServer(server),
-	)
-}
-```
-
-### Manager
-
-The `Manager` groups runnables into two tiers: **processes** (foreground work) and **services** (infrastructure).
-Shutdown is triggered when the context is cancelled or any runnable completes.
-During shutdown, processes are stopped first, then services — ensuring services remain available while processes drain.
-
-```go
-g := runnable.Manager()
-g.RegisterService(jobQueue)
-g.Register(httpServer)
-g.Register(monitor)
-
-runnable.Run(g)
-```
+A `Manager` is itself a `Runnable`, so managers can be nested for independent shutdown ordering.
 
 <details>
-  <summary markdown="span">Logs of a demo app</summary>
+  <summary>Example logs</summary>
 
-```shell
+```
 $ go run ./examples/example/
 level=INFO msg=started runnable=manager/StupidJobQueue
 level=INFO msg=started runnable=manager/httpserver
@@ -131,7 +56,30 @@ level=INFO msg="shutdown complete" runnable=manager
 
 </details>
 
-<!-- omit in toc -->
+## Entrypoints
+
+`Run`, `RunFunc`, and `RunGroup` are intended as `main()` helpers. They handle OS signals (SIGINT/SIGTERM) and call `log.Fatal` on error.
+
+```go
+func main() {
+    runnable.Run(myApp)
+}
+```
+
+## Wrappers
+
+Wrappers compose behavior around a `Runnable`:
+
+| Wrapper | Description |
+|---------|-------------|
+| `HTTPServer(server)` | Start and gracefully shut down a `*http.Server` |
+| `Restart(r, opts...)` | Auto-restart on failure, with configurable limits and delays |
+| `Every(r, duration)` | Run periodically |
+| `Recover(r)` | Catch panics and return them as errors |
+| `Signal(r, signals...)` | Cancel context on OS signals |
+| `Closer(c)` | Call `Close()` on context cancellation |
+| `Func(fn)` | Adapt a `func(context.Context) error` to `Runnable` |
+
 ## License
 
 The MIT License (MIT)
