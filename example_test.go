@@ -51,10 +51,10 @@ func (*CleanupTask) Run(ctx context.Context) error {
 func Example() {
 	runnable.SetLogger(slog.New(slog.NewTextHandler(os.Stdout, nil)))
 
-	g := runnable.NewManager()
+	g := runnable.Manager()
 
 	jobs := NewJobs()
-	g.Add(jobs)
+	g.RegisterService(jobs)
 
 	server := &http.Server{
 		Addr: "127.0.0.1:8080",
@@ -63,7 +63,7 @@ func Example() {
 			jobs.Perform(id)
 		}),
 	}
-	g.Add(runnable.HTTPServer(server), jobs)
+	g.Register(runnable.HTTPServer(server))
 
 	task := runnable.FuncNamed("enqueue", func(ctx context.Context) error {
 		_, _ = http.Post("http://127.0.0.1:8080/?id=1", "test/plain", nil)
@@ -72,12 +72,12 @@ func Example() {
 
 		return nil // quit right away, will trigger a shutdown
 	})
-	g.Add(task)
+	g.Register(task)
 
 	cleanup := runnable.Every(&CleanupTask{}, time.Hour)
-	g.Add(cleanup, jobs)
+	g.Register(cleanup)
 
-	runnable.Run(g.Build())
+	runnable.Run(g)
 
 	// level=INFO msg=started runnable=manager/Jobs
 	// level=INFO msg=started runnable=manager/httpserver

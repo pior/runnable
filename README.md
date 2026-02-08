@@ -41,7 +41,7 @@ func run(ctx context.Context) error {
 - [Process start and shutdown](#process-start-and-shutdown)
 - [Restart](#restart)
 - [HTTP Server](#http-server)
-- [Dependency Manager](#dependency-manager)
+- [Manager](#manager)
 
 ### Process start and shutdown
 
@@ -96,38 +96,36 @@ func main() {
 }
 ```
 
-### Dependency Manager
+### Manager
 
-The `Manager` runnable starts and stops all runnables while respecting the dependency between them.
-Components with dependencies will be stopped before their dependencies.
+The `Manager` groups runnables into two tiers: **processes** (foreground work) and **services** (infrastructure).
+Shutdown is triggered when the context is cancelled or any runnable completes.
+During shutdown, processes are stopped first, then services — ensuring services remain available while processes drain.
 
-Example with three components:
 ```go
-g := runnable.NewManager()
-g.Add(jobQueue)
-g.Add(httpServer, jobQueue) // jobs is a dependency
-g.Add(monitor)
+g := runnable.Manager()
+g.RegisterService(jobQueue)
+g.Register(httpServer)
+g.Register(monitor)
 
-runnable.Run(g.Build())
+runnable.Run(g)
 ```
 
 <details>
   <summary markdown="span">Logs of a demo app</summary>
 
 ```shell
-$ go run ./examples/example
-level=INFO msg=started runnable=manager/JobQueue
+$ go run ./examples/example/
+level=INFO msg=started runnable=manager/StupidJobQueue
 level=INFO msg=started runnable=manager/httpserver
-level=INFO msg=started runnable=manager/Monitor
+level=INFO msg=started runnable=manager/every-3s/RunnableFunc
 ...
-^Clevel=INFO msg="received signal" runnable=signal/manager signal=interrupt
+^C
+level=INFO msg="signal received" runnable=signal signal=interrupt
 level=INFO msg="starting shutdown" runnable=manager reason="context cancelled"
-level=INFO msg=cancelled runnable=manager/httpserver
-level=INFO msg=cancelled runnable=manager/Monitor
-level=INFO msg=stopped runnable=manager/Monitor
 level=INFO msg=stopped runnable=manager/httpserver
-level=INFO msg=cancelled runnable=manager/JobQueue
-level=INFO msg=stopped runnable=manager/JobQueue
+level=INFO msg=stopped runnable=manager/every-3s/RunnableFunc
+level=INFO msg=stopped runnable=manager/StupidJobQueue
 level=INFO msg="shutdown complete" runnable=manager
 ```
 

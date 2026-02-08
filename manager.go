@@ -4,170 +4,215 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"slices"
 	"strings"
 	"time"
 )
 
-type AppManager interface {
-	Add(runnable Runnable, dependencies ...Runnable)
-	Build() Runnable
-}
-
-// ManagerOption configures the behavior of a Manager.
-type ManagerOption func(*manager)
-
-func ManagerName(name string) ManagerOption {
-	return func(m *manager) {
-		m.name = name
-	}
-}
-
-func ManagerShutdownTimeout(dur time.Duration) ManagerOption {
-	return func(m *manager) {
-		m.shutdownTimeout = dur
-	}
-}
-
-// NewManager returns a runnable that execute runnables in go routines.
-// Runnables can declare a dependency on another runnable. Dependencies are started first and stopped last.
-func NewManager(opts ...ManagerOption) AppManager {
-	m := &manager{
-		name:            "manager",
+// Manager returns a new manager that coordinates the lifecycle of multiple runnables.
+//
+// Runnables are organized in two tiers: processes (foreground work) and services
+// (infrastructure like databases or queues). Shutdown is triggered when the context
+// is cancelled or any runnable completes. During shutdown, processes are cancelled
+// first, then services, ensuring services remain available while processes drain.
+//
+// Each runnable is wrapped with [Recover] to catch panics. Errors from runnables are
+// collected, except [context.Canceled] which is ignored. A manager is itself a
+// [Runnable], so managers can be nested for independent shutdown ordering.
+//
+// Registering the same runnable twice, or as both a process and a service, panics.
+func Manager() *manager {
+	return &manager{
 		shutdownTimeout: 10 * time.Second,
 	}
-
-	for _, opt := range opts {
-		if opt == nil {
-			continue
-		}
-		opt(m)
-	}
-
-	return m
 }
 
 type manager struct {
 	name            string
-	containers      []*managerContainer
+	processes       []Runnable
+	services        []Runnable
 	shutdownTimeout time.Duration
 }
 
-func (m *manager) runnableName() string { return m.name }
-
-func (m *manager) Add(runnable Runnable, dependencies ...Runnable) {
-	container := m.insertRunnable(runnable)
-	for _, dep := range dependencies {
-		m.insertRunnable(dep).insertUser(container)
+func (m *manager) runnableName() string {
+	if m.name != "" {
+		return m.name
 	}
+	return "manager"
 }
 
-func (m *manager) findRunnable(runnable Runnable) *managerContainer {
-	for _, container := range m.containers {
-		if container.runnable == runnable {
-			return container
-		}
-	}
-	return nil
-}
-
-func (m *manager) insertRunnable(runnable Runnable) (value *managerContainer) {
-	value = m.findRunnable(runnable)
-	if value == nil {
-		value = newManagerContainer(runnable)
-		m.containers = append(m.containers, value)
-	}
-	return value
-}
-
-func (m *manager) Build() Runnable {
+// Name sets the manager's name, used as a prefix in log messages.
+func (m *manager) Name(name string) *manager {
+	m.name = name
 	return m
 }
 
-func (m *manager) Run(ctx context.Context) error {
-	dying := make(chan *managerContainer, len(m.containers))
-	completedChan := make(chan *managerContainer, len(m.containers))
+// ShutdownTimeout sets the maximum time allowed for each shutdown phase.
+// Defaults to 10 seconds.
+func (m *manager) ShutdownTimeout(dur time.Duration) *manager {
+	m.shutdownTimeout = dur
+	return m
+}
 
-	// run the runnables in Go routines.
-	for _, c := range m.containers {
-		c.launch(completedChan, dying)
-		logger.Info("started", "runnable", m.runnableName()+"/"+c.name())
+// ManagerRegistry is the interface for registering runnables with a Manager.
+type ManagerRegistry interface {
+	// Register registers processes. Processes are the primary runnables of the
+	// application. They are cancelled first during shutdown.
+	Register(runners ...Runnable) ManagerRegistry
+	// RegisterService registers services. Services are infrastructure runnables
+	// (databases, queues, etc.) that processes depend on. They are cancelled after
+	// all processes have stopped.
+	RegisterService(services ...Runnable) ManagerRegistry
+}
+
+var _ ManagerRegistry = (*manager)(nil)
+
+// Register registers processes. Processes are the primary runnables of the
+// application. They are cancelled first during shutdown.
+// Panics if any runnable is already registered.
+func (m *manager) Register(runners ...Runnable) ManagerRegistry {
+	for _, r := range runners {
+		if slices.Contains(m.processes, r) || slices.Contains(m.services, r) {
+			panic(fmt.Sprintf("runnable %s already registered", runnableName(r)))
+		}
+	}
+	m.processes = append(m.processes, runners...)
+	return m
+}
+
+// RegisterService registers services. Services are infrastructure runnables
+// (databases, queues, etc.) that processes depend on. They are cancelled after
+// all processes have stopped.
+// Panics if any runnable is already registered.
+func (m *manager) RegisterService(services ...Runnable) ManagerRegistry {
+	for _, s := range services {
+		if slices.Contains(m.processes, s) || slices.Contains(m.services, s) {
+			panic(fmt.Sprintf("runnable %s already registered", runnableName(s)))
+		}
+	}
+	m.services = append(m.services, services...)
+	return m
+}
+
+type completed struct {
+	runnable Runnable
+	err      error
+}
+
+type runnableSet map[Runnable]bool
+
+func (m *manager) Run(ctx context.Context) error {
+	prefix := m.runnableName()
+
+	svcCtx, svcCancel := context.WithCancel(context.WithoutCancel(ctx))
+	defer svcCancel()
+
+	procCtx, procCancel := context.WithCancel(context.WithoutCancel(ctx))
+	defer procCancel()
+
+	svcDone := make(chan completed, len(m.services))
+	procDone := make(chan completed, len(m.processes))
+
+	for _, svc := range m.services {
+		go func() {
+			svcDone <- completed{svc, Recover(svc).Run(svcCtx)}
+		}()
+		logger.Info("started", "runnable", prefix+"/"+runnableName(svc))
 	}
 
-	// block until group is cancelled, or a runnable dies.
+	for _, proc := range m.processes {
+		go func() {
+			procDone <- completed{proc, Recover(proc).Run(procCtx)}
+		}()
+		logger.Info("started", "runnable", prefix+"/"+runnableName(proc))
+	}
+
+	// Track completed runnables from the initial trigger.
+	var errs []string
+	activeProcs := runnableSet{}
+	for _, p := range m.processes {
+		activeProcs[p] = true
+	}
+	activeSvcs := runnableSet{}
+	for _, s := range m.services {
+		activeSvcs[s] = true
+	}
+
+	// Wait for context cancellation or any runnable to complete.
 	select {
 	case <-ctx.Done():
-		logger.Info("starting shutdown", "runnable", m.runnableName(), "reason", "context cancelled")
-	case c := <-dying:
-		logger.Info("starting shutdown", "runnable", m.runnableName(), "reason", c.name()+" died")
+		logger.Info("starting shutdown", "runnable", prefix, "reason", "context cancelled")
+	case c := <-procDone:
+		delete(activeProcs, c.runnable)
+		m.logCompleted(c)
+		m.collectError(&errs, c)
+		logger.Info("starting shutdown", "runnable", prefix, "reason", runnableName(c.runnable)+" died")
+	case c := <-svcDone:
+		delete(activeSvcs, c.runnable)
+		m.logCompleted(c)
+		m.collectError(&errs, c)
+		logger.Info("starting shutdown", "runnable", prefix, "reason", runnableName(c.runnable)+" died")
 	}
 
-	// starting shutdown
-	cancelled := newManagerContainerSet()
-	completed := newManagerContainerSet()
+	// Phase 1: stop processes
+	procCancel()
 
 	deadline := time.After(m.shutdownTimeout)
-	ticker := time.NewTicker(time.Millisecond * 10)
-	defer ticker.Stop()
 
-	shutdown := false
-
-	for !shutdown {
-		if len(m.containers) == 0 {
-			break
-		}
-
-		// shutdown runners one by one, if possible (not a dependency of another runner)
-		for _, c := range m.containers {
-			if completed.contains(c) {
-				continue
-			}
-
-			if completed.containerHasRunningUsers(c) {
-				continue
-			}
-
-			if !cancelled.contains(c) {
-				logger.Info("cancelled", "runnable", m.runnableName()+"/"+c.name())
-				c.shutdown()
-				cancelled.insert(c)
-			}
-		}
-
-		// record terminated runners, quit when complete
+	for len(activeProcs) > 0 {
 		select {
-		case c := <-completedChan:
-			completed.insert(c)
-
-			if c.err == nil || errors.Is(c.err, context.Canceled) {
-				logger.Info("stopped", "runnable", m.runnableName()+"/"+c.name())
-			} else {
-				logger.Info("stopped with error", "runnable", m.runnableName()+"/"+c.name(), "error", c.err)
-			}
-
-			if len(completed) == len(m.containers) {
-				shutdown = true
-			}
+		case c := <-procDone:
+			delete(activeProcs, c.runnable)
+			m.logCompleted(c)
+			m.collectError(&errs, c)
 		case <-deadline:
-			shutdown = true
-		case <-ticker.C:
+			for p := range activeProcs {
+				logger.Info("still running", "runnable", prefix+"/"+runnableName(p))
+				errs = append(errs, fmt.Sprintf("%s is still running", runnableName(p)))
+			}
+			activeProcs = nil
 		}
 	}
 
-	errs := []string{}
-	for _, c := range m.containers {
-		if !completed.contains(c) {
-			logger.Info("still running", "runnable", m.runnableName()+"/"+c.name())
-			errs = append(errs, fmt.Sprintf("%s is still running", c.name()))
-		}
-		if c.err != nil && !errors.Is(c.err, context.Canceled) {
-			errs = append(errs, fmt.Sprintf("%s crashed with %+v", c.name(), c.err))
+	// Phase 2: stop services
+	svcCancel()
+
+	deadline = time.After(m.shutdownTimeout)
+
+	for len(activeSvcs) > 0 {
+		select {
+		case c := <-svcDone:
+			delete(activeSvcs, c.runnable)
+			m.logCompleted(c)
+			m.collectError(&errs, c)
+		case <-deadline:
+			for s := range activeSvcs {
+				logger.Info("still running", "runnable", prefix+"/"+runnableName(s))
+				errs = append(errs, fmt.Sprintf("%s is still running", runnableName(s)))
+			}
+			activeSvcs = nil
 		}
 	}
 
-	logger.Info("shutdown complete", "runnable", m.runnableName())
+	logger.Info("shutdown complete", "runnable", prefix)
 
-	if len(errs) != 0 {
-		return fmt.Errorf("manager: %s", strings.Join(errs, ", "))
+	if len(errs) > 0 {
+		return fmt.Errorf("%s: %s", prefix, strings.Join(errs, ", "))
 	}
 	return nil
+}
+
+func (m *manager) logCompleted(c completed) {
+	name := m.runnableName() + "/" + runnableName(c.runnable)
+	if c.err == nil || errors.Is(c.err, context.Canceled) {
+		logger.Info("stopped", "runnable", name)
+	} else {
+		logger.Info("stopped with error", "runnable", name, "error", c.err)
+	}
+}
+
+func (m *manager) collectError(errs *[]string, c completed) {
+	if c.err != nil && !errors.Is(c.err, context.Canceled) {
+		*errs = append(*errs, fmt.Sprintf("%s crashed with %+v", runnableName(c.runnable), c.err))
+	}
 }

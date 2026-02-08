@@ -5,13 +5,11 @@ import (
 	stdlog "log"
 )
 
-// RunGroup runs all runnables in a Group, and listen to SIGTERM/SIGINT
+// RunGroup runs all runnables in a Manager, and listen to SIGTERM/SIGINT
 func RunGroup(runners ...Runnable) {
-	m := NewManager(nil)
-	for _, runner := range runners {
-		m.Add(runner)
-	}
-	Run(m.Build())
+	m := Manager()
+	m.Register(runners...)
+	Run(m)
 }
 
 // Run runs a single runnable, and listen to SIGTERM/SIGINT

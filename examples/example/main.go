@@ -27,10 +27,10 @@ func main() {
 	})
 	monitor = runnable.Every(monitor, 3*time.Second)
 
-	g := runnable.NewManager()
-	g.Add(jobs)
-	g.Add(serverRunner, jobs) // jobs is a dependency
-	g.Add(monitor)
+	g := runnable.Manager()
+	g.RegisterService(jobs)
+	g.Register(serverRunner)
+	g.Register(monitor)
 
-	runnable.Run(g.Build())
+	runnable.Run(g)
 }
