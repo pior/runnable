@@ -86,7 +86,7 @@ func (r *restart) Run(ctx context.Context) error {
 	errorCount := 0
 
 	for {
-		logger.Info("starting", "runnable", r.name, "restart", restartCount, "errors", errorCount)
+		logger.Info(r.name+": starting", "restart", restartCount, "errors", errorCount)
 
 		startTime := time.Now()
 		err := r.runnable.Run(ctx)
@@ -102,14 +102,14 @@ func (r *restart) Run(ctx context.Context) error {
 			errorCount++
 
 			if r.errorLimit > 0 && errorCount >= r.errorLimit {
-				logger.Info("not restarting", "runnable", r.name, "reason", "error limit", "limit", r.errorLimit)
+				logger.Info(r.name+": not restarting", "reason", "error limit", "limit", r.errorLimit)
 				return err
 			}
 		} else {
 			errorCount = 0
 
 			if r.limit > 0 && restartCount >= r.limit {
-				logger.Info("not restarting", "runnable", r.name, "reason", "restart limit", "limit", r.limit)
+				logger.Info(r.name+": not restarting", "reason", "restart limit", "limit", r.limit)
 				return nil
 			}
 		}

@@ -176,10 +176,10 @@ func ExampleRestart() {
 	_ = r.Run(ctx)
 
 	// Output:
-	// level=INFO msg=starting runnable=restart/dyingRunnable restart=0 errors=0
-	// level=INFO msg=starting runnable=restart/dyingRunnable restart=1 errors=1
-	// level=INFO msg=starting runnable=restart/dyingRunnable restart=2 errors=2
-	// level=INFO msg="not restarting" runnable=restart/dyingRunnable reason="error limit" limit=3
+	// level=INFO msg="restart/dyingRunnable: starting" restart=0 errors=0
+	// level=INFO msg="restart/dyingRunnable: starting" restart=1 errors=1
+	// level=INFO msg="restart/dyingRunnable: starting" restart=2 errors=2
+	// level=INFO msg="restart/dyingRunnable: not restarting" reason="error limit" limit=3
 }
 
 func ExampleRestart_worker() {
@@ -191,8 +191,8 @@ func ExampleRestart_worker() {
 	_ = r.Run(ctx)
 
 	// Output:
-	// level=INFO msg=starting runnable=restart/counter restart=0 errors=0
-	// level=INFO msg=starting runnable=restart/counter restart=1 errors=0
-	// level=INFO msg=starting runnable=restart/counter restart=2 errors=0
-	// level=INFO msg="not restarting" runnable=restart/counter reason="restart limit" limit=2
+	// level=INFO msg="restart/counter: starting" restart=0 errors=0
+	// level=INFO msg="restart/counter: starting" restart=1 errors=0
+	// level=INFO msg="restart/counter: starting" restart=2 errors=0
+	// level=INFO msg="restart/counter: not restarting" reason="restart limit" limit=2
 }

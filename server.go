@@ -47,7 +47,7 @@ func (r *httpServer) Run(ctx context.Context) error {
 	errChan := make(chan error)
 
 	go func() {
-		logger.Info("listening", "runnable", r.name, "addr", r.server.Addr)
+		logger.Info(r.name+": listening", "addr", r.server.Addr)
 		errChan <- r.server.ListenAndServe()
 	}()
 
@@ -56,12 +56,12 @@ func (r *httpServer) Run(ctx context.Context) error {
 
 	select {
 	case <-ctx.Done():
-		logger.Info("shutting down", "runnable", r.name)
+		logger.Info(r.name + ": shutting down")
 		shutdownErr = r.shutdown()
 		err = <-errChan
-		logger.Info("stopped", "runnable", r.name)
+		logger.Info(r.name + ": stopped")
 	case err = <-errChan:
-		logger.Info("stopped with error", "runnable", r.name, "error", err)
+		logger.Info(r.name+": stopped with error", "error", err)
 		// Server stopped on its own — no Shutdown needed.
 	}
 
