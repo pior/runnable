@@ -51,21 +51,23 @@ func Restart(runnable Runnable, opts ...RestartOption) Runnable {
 	if cfg.crashBackoffDelayFn == nil {
 		cfg.crashBackoffDelayFn = crashBackoffDelay
 	}
-	return &restart{baseWrapper{"restart", runnable}, runnable, cfg}
+	return &restart{"restart/" + runnableName(runnable), runnable, cfg}
 }
 
 type restart struct {
-	baseWrapper
+	name     string
 	runnable Runnable
 	cfg      restartConfig
 }
+
+func (r *restart) runnableName() string { return r.name }
 
 func (r *restart) Run(ctx context.Context) error {
 	restartCount := 0
 	crashCount := 0
 
 	for {
-		logger.Info("starting", "runnable", findName(r), "restart", restartCount, "crash", crashCount)
+		logger.Info("starting", "runnable", r.name, "restart", restartCount, "crash", crashCount)
 		err := r.runnable.Run(ctx)
 		isCrash := err != nil
 
@@ -74,12 +76,12 @@ func (r *restart) Run(ctx context.Context) error {
 		}
 
 		if r.cfg.restartLimit > 0 && restartCount >= r.cfg.restartLimit {
-			logger.Info("not restarting", "runnable", findName(r), "reason", "restart limit", "limit", r.cfg.restartLimit)
+			logger.Info("not restarting", "runnable", r.name, "reason", "restart limit", "limit", r.cfg.restartLimit)
 			return err
 		}
 
 		if r.cfg.crashLimit > 0 && crashCount >= r.cfg.crashLimit {
-			logger.Info("not restarting", "runnable", findName(r), "reason", "crash limit", "limit", r.cfg.crashLimit)
+			logger.Info("not restarting", "runnable", r.name, "reason", "crash limit", "limit", r.cfg.crashLimit)
 			return err
 		}
 

@@ -8,21 +8,23 @@ import (
 )
 
 type httpServer struct {
-	baseWrapper
+	name            string
 	server          *http.Server
 	shutdownTimeout time.Duration
 }
 
+func (r *httpServer) runnableName() string { return r.name }
+
 // HTTPServer returns a runnable that runs a *http.Server.
 func HTTPServer(server *http.Server) Runnable {
-	return &httpServer{baseWrapper{"httpserver", nil}, server, time.Second * 30}
+	return &httpServer{"httpserver", server, time.Second * 30}
 }
 
 func (r *httpServer) Run(ctx context.Context) error {
 	errChan := make(chan error)
 
 	go func() {
-		logger.Info("listening", "runnable", findName(r), "addr", r.server.Addr)
+		logger.Info("listening", "runnable", r.name, "addr", r.server.Addr)
 		errChan <- r.server.ListenAndServe()
 	}()
 
@@ -31,11 +33,11 @@ func (r *httpServer) Run(ctx context.Context) error {
 
 	select {
 	case <-ctx.Done():
-		logger.Info("shutdown", "runnable", findName(r))
+		logger.Info("shutdown", "runnable", r.name)
 		shutdownErr = r.shutdown()
 		err = <-errChan
 	case err = <-errChan:
-		logger.Info("shutdown", "runnable", findName(r), "error", err)
+		logger.Info("shutdown", "runnable", r.name, "error", err)
 		shutdownErr = r.shutdown()
 	}
 

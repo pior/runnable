@@ -8,17 +8,19 @@ import (
 // Every returns a runnable that will periodically run the runnable passed in argument.
 func Every(runnable Runnable, period time.Duration) Runnable {
 	return &every{
-		baseWrapper{"every-" + period.String(), runnable},
-		runnable,
-		period,
+		name:     "every-" + period.String() + "/" + runnableName(runnable),
+		runnable: runnable,
+		period:   period,
 	}
 }
 
 type every struct {
-	baseWrapper
+	name     string
 	runnable Runnable
 	period   time.Duration
 }
+
+func (e *every) runnableName() string { return e.name }
 
 func (e *every) Run(ctx context.Context) (err error) {
 	ticker := time.NewTicker(e.period)
