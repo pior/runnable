@@ -2,6 +2,7 @@ package runnable
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net/http"
 	"time"
@@ -65,7 +66,7 @@ func (r *httpServer) Run(ctx context.Context) error {
 		// Server stopped on its own — no Shutdown needed.
 	}
 
-	if err == http.ErrServerClosed {
+	if errors.Is(err, http.ErrServerClosed) {
 		err = nil
 	}
 	if err != nil {

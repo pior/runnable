@@ -6,7 +6,7 @@ import (
 )
 
 type PanicError struct {
-	value interface{}
+	value any
 }
 
 func (e *PanicError) Error() string {

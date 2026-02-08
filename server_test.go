@@ -44,8 +44,8 @@ func TestHTTPServer(t *testing.T) {
 		cancel()
 
 		select {
-		case err := <-errChan:
-			require.NoError(t, err)
+		case runErr := <-errChan:
+			require.NoError(t, runErr)
 		case <-time.After(5 * time.Second):
 			t.Fatal("server did not shut down within 5s")
 		}
@@ -105,7 +105,6 @@ func TestHTTPServer(t *testing.T) {
 
 		require.Equal(t, fmt.Sprint(5*time.Second), fmt.Sprint(r.shutdownTimeout))
 	})
-
 }
 
 func ExampleHTTPServer() {
