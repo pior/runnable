@@ -3,7 +3,7 @@ package runnable_test
 import (
 	"context"
 	"fmt"
-	"log"
+	"log/slog"
 	"net/http"
 	"os"
 	"time"
@@ -49,7 +49,7 @@ func (*CleanupTask) Run(ctx context.Context) error {
 }
 
 func Example() {
-	runnable.SetLogger(log.New(os.Stdout, "", 0))
+	runnable.SetLogger(slog.New(slog.NewTextHandler(os.Stdout, nil)))
 
 	g := runnable.NewManager()
 
@@ -79,26 +79,14 @@ func Example() {
 
 	runnable.Run(g.Build())
 
-	// INFO manager: runnable_test.Jobs started
-	// INFO manager: runnable.httpServer started
-	// INFO manager: func(runnable.RunnableFunc) started
-	// INFO manager: periodic(runnable_test.CleanupTask) started
-	// DBUG http_server: listening
+	// level=INFO msg=started runnable=manager/Jobs
+	// level=INFO msg=started runnable=manager/httpserver
+	// level=INFO msg=started runnable=manager/RunnableFunc
+	// level=INFO msg=started runnable=manager/every-1h0m0s/CleanupTask
+	// level=INFO msg=listening runnable=httpserver addr=127.0.0.1:8080
 	// Starting job 1
 	// Completed job 1
-	// Starting job 2
-	// Completed job 2
-	// Starting job 3
-	// INFO manager: starting shutdown (func(runnable.RunnableFunc) died)
-	// INFO manager: runnable.httpServer cancelled
-	// INFO manager: func(runnable.RunnableFunc) cancelled
-	// INFO manager: periodic(runnable_test.CleanupTask) cancelled
-	// INFO manager: func(runnable.RunnableFunc) stopped
-	// INFO manager: periodic(runnable_test.CleanupTask) stopped
-	// DBUG http_server: shutdown (context cancelled)
-	// INFO manager: runnable.httpServer stopped
-	// INFO manager: runnable_test.Jobs cancelled
-	// Completed job 3
-	// INFO manager: runnable_test.Jobs stopped
-	// INFO manager: shutdown complete
+	// ...
+	// level=INFO msg="starting shutdown" runnable=manager reason="RunnableFunc died"
+	// level=INFO msg="shutdown complete" runnable=manager
 }

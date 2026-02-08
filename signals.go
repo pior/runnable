@@ -32,7 +32,7 @@ func (s *signal) Run(ctx context.Context) error {
 		defer ossignal.Reset(s.signals...)
 
 		sig := <-sigChan
-		Log(s, "received signal %s", sig)
+		logger.Info("received signal", "runnable", findName(s), "signal", sig)
 		cancelFunc()
 	}()
 

@@ -80,15 +80,15 @@ func (m *manager) Run(ctx context.Context) error {
 	// run the runnables in Go routines.
 	for _, c := range m.containers {
 		c.launch(completedChan, dying)
-		Log(m, "%s started", c.name())
+		logger.Info("started", "runnable", "manager/"+c.name())
 	}
 
 	// block until group is cancelled, or a runnable dies.
 	select {
 	case <-ctx.Done():
-		Log(m, "starting shutdown (context cancelled)")
+		logger.Info("starting shutdown", "runnable", "manager", "reason", "context cancelled")
 	case c := <-dying:
-		Log(m, "starting shutdown (%s died)", c.name())
+		logger.Info("starting shutdown", "runnable", "manager", "reason", c.name()+" died")
 	}
 
 	// starting shutdown
@@ -117,7 +117,7 @@ func (m *manager) Run(ctx context.Context) error {
 			}
 
 			if !cancelled.contains(c) {
-				Log(m, "%s cancelled", c.name())
+				logger.Info("cancelled", "runnable", "manager/"+c.name())
 				c.shutdown()
 				cancelled.insert(c)
 			}
@@ -129,9 +129,9 @@ func (m *manager) Run(ctx context.Context) error {
 			completed.insert(c)
 
 			if c.err == nil || errors.Is(c.err, context.Canceled) {
-				Log(m, "%s stopped", c.name())
+				logger.Info("stopped", "runnable", "manager/"+c.name())
 			} else {
-				Log(m, "%s stopped with error: %+v", c.name(), c.err)
+				logger.Info("stopped with error", "runnable", "manager/"+c.name(), "error", c.err)
 			}
 
 			if len(completed) == len(m.containers) {
@@ -146,7 +146,7 @@ func (m *manager) Run(ctx context.Context) error {
 	errs := []string{}
 	for _, c := range m.containers {
 		if !completed.contains(c) {
-			Log(m, "%s is still running", c.name())
+			logger.Info("still running", "runnable", "manager/"+c.name())
 			errs = append(errs, fmt.Sprintf("%s is still running", c.name()))
 		}
 		if c.err != nil && !errors.Is(c.err, context.Canceled) {
@@ -154,7 +154,7 @@ func (m *manager) Run(ctx context.Context) error {
 		}
 	}
 
-	Log(m, "shutdown complete")
+	logger.Info("shutdown complete", "runnable", "manager")
 
 	if len(errs) != 0 {
 		return fmt.Errorf("manager: %s", strings.Join(errs, ", "))

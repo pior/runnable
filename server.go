@@ -22,7 +22,7 @@ func (r *httpServer) Run(ctx context.Context) error {
 	errChan := make(chan error)
 
 	go func() {
-		Log(r, "listening on %s", r.server.Addr)
+		logger.Info("listening", "runnable", findName(r), "addr", r.server.Addr)
 		errChan <- r.server.ListenAndServe()
 	}()
 
@@ -31,11 +31,11 @@ func (r *httpServer) Run(ctx context.Context) error {
 
 	select {
 	case <-ctx.Done():
-		Log(r, "shutdown")
+		logger.Info("shutdown", "runnable", findName(r))
 		shutdownErr = r.shutdown()
 		err = <-errChan
 	case err = <-errChan:
-		Log(r, "shutdown (err: %s)", err)
+		logger.Info("shutdown", "runnable", findName(r), "error", err)
 		shutdownErr = r.shutdown()
 	}
 

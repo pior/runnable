@@ -65,7 +65,7 @@ func (r *restart) Run(ctx context.Context) error {
 	crashCount := 0
 
 	for {
-		Log(r, "starting (restart=%d crash=%d)", restartCount, crashCount)
+		logger.Info("starting", "runnable", findName(r), "restart", restartCount, "crash", crashCount)
 		err := r.runnable.Run(ctx)
 		isCrash := err != nil
 
@@ -74,12 +74,12 @@ func (r *restart) Run(ctx context.Context) error {
 		}
 
 		if r.cfg.restartLimit > 0 && restartCount >= r.cfg.restartLimit {
-			Log(r, "not restarting (hit the restart limit: %d)", r.cfg.restartLimit)
+			logger.Info("not restarting", "runnable", findName(r), "reason", "restart limit", "limit", r.cfg.restartLimit)
 			return err
 		}
 
 		if r.cfg.crashLimit > 0 && crashCount >= r.cfg.crashLimit {
-			Log(r, "not restarting (hit the crash limit: %d)", r.cfg.crashLimit)
+			logger.Info("not restarting", "runnable", findName(r), "reason", "crash limit", "limit", r.cfg.crashLimit)
 			return err
 		}
 
