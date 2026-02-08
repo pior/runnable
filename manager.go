@@ -23,6 +23,7 @@ import (
 // Registering the same runnable twice, or as both a process and a service, panics.
 func Manager() *manager {
 	return &manager{
+		name:            "manager",
 		shutdownTimeout: 10 * time.Second,
 	}
 }
@@ -34,12 +35,7 @@ type manager struct {
 	shutdownTimeout time.Duration
 }
 
-func (m *manager) runnableName() string {
-	if m.name != "" {
-		return m.name
-	}
-	return "manager"
-}
+func (m *manager) runnableName() string { return m.name }
 
 // Name sets the manager's name, used as a prefix in log messages.
 func (m *manager) Name(name string) *manager {
@@ -117,14 +113,14 @@ func (m *manager) Run(ctx context.Context) error {
 		go func() {
 			svcDone <- completed{svc, Recover(svc).Run(svcCtx)}
 		}()
-		logger.Info("started", "runnable", prefix+"/"+runnableName(svc))
+		logger.Info(prefix + "/" + runnableName(svc) + ": started")
 	}
 
 	for _, proc := range m.processes {
 		go func() {
 			procDone <- completed{proc, Recover(proc).Run(procCtx)}
 		}()
-		logger.Info("started", "runnable", prefix+"/"+runnableName(proc))
+		logger.Info(prefix + "/" + runnableName(proc) + ": started")
 	}
 
 	// Track completed runnables from the initial trigger.
@@ -141,17 +137,17 @@ func (m *manager) Run(ctx context.Context) error {
 	// Wait for context cancellation or any runnable to complete.
 	select {
 	case <-ctx.Done():
-		logger.Info("starting shutdown", "runnable", prefix, "reason", "context cancelled")
+		logger.Info(prefix+": starting shutdown", "reason", "context cancelled")
 	case c := <-procDone:
 		delete(activeProcs, c.runnable)
 		m.logCompleted(c)
 		m.collectError(&errs, c)
-		logger.Info("starting shutdown", "runnable", prefix, "reason", runnableName(c.runnable)+" died")
+		logger.Info(prefix+": starting shutdown", "reason", runnableName(c.runnable)+" died")
 	case c := <-svcDone:
 		delete(activeSvcs, c.runnable)
 		m.logCompleted(c)
 		m.collectError(&errs, c)
-		logger.Info("starting shutdown", "runnable", prefix, "reason", runnableName(c.runnable)+" died")
+		logger.Info(prefix+": starting shutdown", "reason", runnableName(c.runnable)+" died")
 	}
 
 	// Phase 1: stop processes
@@ -167,7 +163,7 @@ func (m *manager) Run(ctx context.Context) error {
 			m.collectError(&errs, c)
 		case <-deadline:
 			for p := range activeProcs {
-				logger.Info("still running", "runnable", prefix+"/"+runnableName(p))
+				logger.Info(prefix + "/" + runnableName(p) + ": still running")
 				errs = append(errs, fmt.Sprintf("%s is still running", runnableName(p)))
 			}
 			activeProcs = nil
@@ -187,14 +183,14 @@ func (m *manager) Run(ctx context.Context) error {
 			m.collectError(&errs, c)
 		case <-deadline:
 			for s := range activeSvcs {
-				logger.Info("still running", "runnable", prefix+"/"+runnableName(s))
+				logger.Info(prefix + "/" + runnableName(s) + ": still running")
 				errs = append(errs, fmt.Sprintf("%s is still running", runnableName(s)))
 			}
 			activeSvcs = nil
 		}
 	}
 
-	logger.Info("shutdown complete", "runnable", prefix)
+	logger.Info(prefix + ": shutdown complete")
 
 	if len(errs) > 0 {
 		return fmt.Errorf("%s: %s", prefix, strings.Join(errs, ", "))
@@ -205,9 +201,9 @@ func (m *manager) Run(ctx context.Context) error {
 func (m *manager) logCompleted(c completed) {
 	name := m.runnableName() + "/" + runnableName(c.runnable)
 	if c.err == nil || errors.Is(c.err, context.Canceled) {
-		logger.Info("stopped", "runnable", name)
+		logger.Info(name + ": stopped")
 	} else {
-		logger.Info("stopped with error", "runnable", name, "error", c.err)
+		logger.Info(name+": stopped with error", "error", c.err)
 	}
 }
 

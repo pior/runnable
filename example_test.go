@@ -79,14 +79,14 @@ func Example() {
 
 	runnable.Run(g)
 
-	// level=INFO msg=started runnable=manager/Jobs
-	// level=INFO msg=started runnable=manager/httpserver
-	// level=INFO msg=started runnable=manager/enqueue
-	// level=INFO msg=started runnable=manager/schedule/CleanupTask
-	// level=INFO msg=listening runnable=httpserver addr=127.0.0.1:8080
+	// level=INFO msg="manager/Jobs: started"
+	// level=INFO msg="manager/httpserver: started"
+	// level=INFO msg="manager/enqueue: started"
+	// level=INFO msg="manager/schedule/CleanupTask: started"
+	// level=INFO msg="httpserver: listening" addr=127.0.0.1:8080
 	// Starting job 1
 	// Completed job 1
 	// ...
-	// level=INFO msg="starting shutdown" runnable=manager reason="enqueue died"
-	// level=INFO msg="shutdown complete" runnable=manager
+	// level=INFO msg="manager: starting shutdown" reason="enqueue died"
+	// level=INFO msg="manager: shutdown complete"
 }
