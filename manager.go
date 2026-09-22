@@ -37,14 +37,14 @@ type Manager struct {
 // NewManager returns a new [Manager]. Its name, used as a prefix in log messages
 // and errors, is "manager" unless a parent [Manager] or [Named] assigns one.
 func NewManager() *Manager {
-	return &Manager{shutdownTimeout: 10 * time.Second}
+	return &Manager{shutdownTimeout: 30 * time.Second}
 }
 
 func (m *Manager) runnableName() string { return "manager" }
 
 // ShutdownTimeout sets the total time for both shutdown phases. Processes get
 // half of it, services get the rest: at least half, more when processes stop
-// early. Defaults to 10 seconds.
+// early. Defaults to 30 seconds.
 //
 // It maps to a platform grace period such as Kubernetes
 // terminationGracePeriodSeconds, which must exceed this value to leave room for

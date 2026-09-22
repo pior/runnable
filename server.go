@@ -23,9 +23,9 @@ func (r *httpServer) runnableName() string { return r.name }
 // HTTPServer returns a runnable that runs a [*http.Server].
 //
 // On context cancellation, it calls [http.Server.Shutdown] to gracefully drain
-// in-flight requests before returning. The shutdown timeout defaults to 5 seconds,
-// half of the [Manager] default shutdown timeout,
-// and can be configured with [httpServer.ShutdownTimeout].
+// in-flight requests before returning. The shutdown timeout defaults to 5 seconds
+// and can be configured with [httpServer.ShutdownTimeout]. Under a [Manager], keep
+// it below the process phase of the manager's shutdown budget.
 func HTTPServer(server *http.Server) *httpServer {
 	return &httpServer{
 		name:            "httpserver",
