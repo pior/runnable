@@ -47,8 +47,14 @@ func (m *Manager) Name(name string) *Manager {
 	return m
 }
 
-// ShutdownTimeout sets the maximum time allowed for each shutdown phase.
-// Defaults to 10 seconds.
+// ShutdownTimeout sets the total time for both shutdown phases. Processes get
+// half of it, services get the rest: at least half, more when processes stop
+// early. Defaults to 10 seconds.
+//
+// It maps to a platform grace period such as Kubernetes
+// terminationGracePeriodSeconds, which must exceed this value to leave room for
+// the process to exit. For nested managers, the inner timeout must be smaller
+// than the outer one.
 func (m *Manager) ShutdownTimeout(dur time.Duration) *Manager {
 	m.shutdownTimeout = dur
 	return m
@@ -178,13 +184,19 @@ func (m *Manager) Run(ctx context.Context) error {
 		logger.Info(prefix+": starting shutdown", "reason", e.name+" died")
 	}
 
+	// One budget for both phases: processes get half, services get the rest.
+	deadline, cancelDeadline := context.WithTimeout(context.Background(), m.shutdownTimeout)
+	defer cancelDeadline()
+	procDeadline, cancelProcDeadline := context.WithTimeout(deadline, m.shutdownTimeout/2)
+	defer cancelProcDeadline()
+
 	// Phase 1: stop processes
 	procCancel()
-	m.waitPhase(m.processes, procDone, time.After(m.shutdownTimeout), &errs)
+	m.waitPhase(m.processes, procDone, procDeadline.Done(), &errs)
 
 	// Phase 2: stop services
 	svcCancel()
-	m.waitPhase(m.services, svcDone, time.After(m.shutdownTimeout), &errs)
+	m.waitPhase(m.services, svcDone, deadline.Done(), &errs)
 
 	logger.Info(prefix + ": shutdown complete")
 
@@ -206,7 +218,7 @@ func (m *Manager) markStopped(entries []entry, c completed) entry {
 func (m *Manager) waitPhase(
 	entries []entry,
 	done <-chan completed,
-	deadline <-chan time.Time,
+	deadline <-chan struct{},
 	errs *[]error,
 ) {
 	running := func(e entry) bool { return !e.stopped }

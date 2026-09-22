@@ -409,3 +409,79 @@ func TestManager_ErrorChain(t *testing.T) {
 		})
 	})
 }
+
+func TestManager_ShutdownBudget(t *testing.T) {
+	// blockUntil returns a runnable that ignores cancellation until unblock is closed.
+	blockUntil := func(name string, unblock chan struct{}) Runnable {
+		return Func(func(context.Context) error {
+			<-unblock
+			return nil
+		}).Name(name)
+	}
+
+	blockOnCancel := func(name string) Runnable {
+		return Func(func(ctx context.Context) error {
+			<-ctx.Done()
+			return nil
+		}).Name(name)
+	}
+
+	t.Run("services get what processes left", func(t *testing.T) {
+		synctest.Test(t, func(t *testing.T) {
+			slowProc := Func(func(ctx context.Context) error {
+				<-ctx.Done()
+				time.Sleep(30 * time.Millisecond)
+				return nil
+			}).Name("slowProcess")
+			unblock := make(chan struct{})
+
+			m := NewManager().ShutdownTimeout(100 * time.Millisecond)
+			m.RegisterProcess(slowProc)
+			m.RegisterService(blockUntil("blockedService", unblock))
+
+			start := time.Now()
+			err := m.Run(cancelledContext())
+			require.Equal(t, "100ms", time.Since(start).String())
+			require.EqualError(t, err, "manager: blockedService: still running after shutdown timeout")
+			require.ErrorIs(t, err, ErrShutdownTimeout)
+
+			close(unblock) // let the goroutine exit for synctest cleanup
+		})
+	})
+
+	t.Run("processes get half, services still stop cleanly", func(t *testing.T) {
+		synctest.Test(t, func(t *testing.T) {
+			unblock := make(chan struct{})
+
+			m := NewManager().ShutdownTimeout(100 * time.Millisecond)
+			m.RegisterProcess(blockUntil("blockedProcess", unblock))
+			m.RegisterService(blockOnCancel("service"))
+
+			start := time.Now()
+			err := m.Run(cancelledContext())
+			require.Equal(t, "50ms", time.Since(start).String())
+			require.EqualError(t, err, "manager: blockedProcess: still running after shutdown timeout")
+			require.ErrorIs(t, err, ErrShutdownTimeout)
+
+			close(unblock) // let the goroutine exit for synctest cleanup
+		})
+	})
+
+	t.Run("both phases time out within the total budget", func(t *testing.T) {
+		synctest.Test(t, func(t *testing.T) {
+			unblock := make(chan struct{})
+
+			m := NewManager().ShutdownTimeout(100 * time.Millisecond)
+			m.RegisterProcess(blockUntil("blockedProcess", unblock))
+			m.RegisterService(blockUntil("blockedService", unblock))
+
+			start := time.Now()
+			err := m.Run(cancelledContext())
+			require.Equal(t, "100ms", time.Since(start).String())
+			require.EqualError(t, err, "manager: blockedProcess: still running after shutdown timeout\n"+
+				"blockedService: still running after shutdown timeout")
+
+			close(unblock) // let the goroutines exit for synctest cleanup
+		})
+	})
+}
