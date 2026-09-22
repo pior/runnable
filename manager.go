@@ -229,9 +229,13 @@ func (m *Manager) waitPhase(
 
 func (m *Manager) logCompleted(e entry, err error) {
 	name := m.runnableName() + "/" + e.name
-	if err == nil || errors.Is(err, context.Canceled) {
+	var pe *PanicError
+	switch {
+	case err == nil || errors.Is(err, context.Canceled):
 		logger.Info(name + ": stopped")
-	} else {
+	case errors.As(err, &pe):
+		logger.Info(name+": stopped with error", "error", err, "stack", string(pe.Stack))
+	default:
 		logger.Info(name+": stopped with error", "error", err)
 	}
 }
