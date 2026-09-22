@@ -47,8 +47,9 @@ func (m *Manager) Name(name string) *Manager {
 	return m
 }
 
-// ShutdownTimeout sets the total time for both shutdown phases. Services get
-// whatever processes left. Defaults to 10 seconds.
+// ShutdownTimeout sets the total time for both shutdown phases. Processes get
+// half of it, services get the rest: at least half, more when processes stop
+// early. Defaults to 10 seconds.
 //
 // It maps to a platform grace period such as Kubernetes
 // terminationGracePeriodSeconds, which must exceed this value to leave room for
@@ -183,13 +184,15 @@ func (m *Manager) Run(ctx context.Context) error {
 		logger.Info(prefix+": starting shutdown", "reason", e.name+" died")
 	}
 
-	// One budget for both phases: services get whatever processes left.
+	// One budget for both phases: processes get half, services get the rest.
 	deadline, cancelDeadline := context.WithTimeout(context.Background(), m.shutdownTimeout)
 	defer cancelDeadline()
+	procDeadline, cancelProcDeadline := context.WithTimeout(deadline, m.shutdownTimeout/2)
+	defer cancelProcDeadline()
 
 	// Phase 1: stop processes
 	procCancel()
-	m.waitPhase(m.processes, procDone, deadline.Done(), &errs)
+	m.waitPhase(m.processes, procDone, procDeadline.Done(), &errs)
 
 	// Phase 2: stop services
 	svcCancel()

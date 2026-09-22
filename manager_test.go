@@ -419,11 +419,18 @@ func TestManager_ShutdownBudget(t *testing.T) {
 		}).Name(name)
 	}
 
+	blockOnCancel := func(name string) Runnable {
+		return Func(func(ctx context.Context) error {
+			<-ctx.Done()
+			return nil
+		}).Name(name)
+	}
+
 	t.Run("services get what processes left", func(t *testing.T) {
 		synctest.Test(t, func(t *testing.T) {
 			slowProc := Func(func(ctx context.Context) error {
 				<-ctx.Done()
-				time.Sleep(60 * time.Millisecond)
+				time.Sleep(30 * time.Millisecond)
 				return nil
 			}).Name("slowProcess")
 			unblock := make(chan struct{})
@@ -442,26 +449,38 @@ func TestManager_ShutdownBudget(t *testing.T) {
 		})
 	})
 
-	t.Run("services are cancelled after processes spend the budget", func(t *testing.T) {
+	t.Run("processes get half, services still stop cleanly", func(t *testing.T) {
 		synctest.Test(t, func(t *testing.T) {
 			unblock := make(chan struct{})
-			svc := newMockRunnable()
 
 			m := NewManager().ShutdownTimeout(100 * time.Millisecond)
 			m.RegisterProcess(blockUntil("blockedProcess", unblock))
-			m.RegisterService(svc)
+			m.RegisterService(blockOnCancel("service"))
+
+			start := time.Now()
+			err := m.Run(cancelledContext())
+			require.Equal(t, "50ms", time.Since(start).String())
+			require.EqualError(t, err, "manager: blockedProcess: still running after shutdown timeout")
+			require.ErrorIs(t, err, ErrShutdownTimeout)
+
+			close(unblock) // let the goroutine exit for synctest cleanup
+		})
+	})
+
+	t.Run("both phases time out within the total budget", func(t *testing.T) {
+		synctest.Test(t, func(t *testing.T) {
+			unblock := make(chan struct{})
+
+			m := NewManager().ShutdownTimeout(100 * time.Millisecond)
+			m.RegisterProcess(blockUntil("blockedProcess", unblock))
+			m.RegisterService(blockUntil("blockedService", unblock))
 
 			start := time.Now()
 			err := m.Run(cancelledContext())
 			require.Equal(t, "100ms", time.Since(start).String())
-
-			// The budget is spent when services are cancelled, so they are reported too.
 			require.EqualError(t, err, "manager: blockedProcess: still running after shutdown timeout\n"+
-				"mockRunnable: still running after shutdown timeout")
-			require.ErrorIs(t, err, ErrShutdownTimeout)
+				"blockedService: still running after shutdown timeout")
 
-			<-svc.cancelledChan
-			svc.errChan <- nil
 			close(unblock) // let the goroutines exit for synctest cleanup
 		})
 	})
