@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"net"
 	"net/http"
 	"time"
 )
@@ -11,6 +12,7 @@ import (
 type httpServer struct {
 	name            string
 	server          *http.Server
+	listener        net.Listener
 	shutdownTimeout time.Duration
 }
 
@@ -39,11 +41,25 @@ func (r *httpServer) ShutdownTimeout(dur time.Duration) *httpServer {
 	return r
 }
 
+// Listener makes the server accept connections on ln instead of listening on
+// [http.Server.Addr]. Use it to listen on port 0 in tests, on a unix socket, on a
+// TLS listener, or on a socket passed by the service manager (socket activation).
+// The server takes ownership of ln and closes it on shutdown.
+func (r *httpServer) Listener(ln net.Listener) *httpServer {
+	r.listener = ln
+	return r
+}
+
 func (r *httpServer) Run(ctx context.Context) error {
 	name := resolveName(ctx, r.name)
 	errChan := make(chan error)
 
 	go func() {
+		if r.listener != nil {
+			logger.Info(name+": listening", "addr", r.listener.Addr().String())
+			errChan <- r.server.Serve(r.listener)
+			return
+		}
 		logger.Info(name+": listening", "addr", r.server.Addr)
 		errChan <- r.server.ListenAndServe()
 	}()

@@ -3,6 +3,7 @@ package runnable
 import (
 	"context"
 	"fmt"
+	"io"
 	"net"
 	"net/http"
 	"testing"
@@ -40,6 +41,41 @@ func TestHTTPServer(t *testing.T) {
 			_ = conn.Close()
 			return true
 		}, time.Second, 10*time.Millisecond)
+
+		cancel()
+
+		select {
+		case runErr := <-errChan:
+			require.NoError(t, runErr)
+		case <-time.After(5 * time.Second):
+			t.Fatal("server did not shut down within 5s")
+		}
+	})
+
+	t.Run("listener", func(t *testing.T) {
+		ln, err := net.Listen("tcp", "127.0.0.1:0")
+		require.NoError(t, err)
+
+		server := &http.Server{
+			Handler: http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+				_, _ = w.Write([]byte("hello"))
+			}),
+		}
+
+		ctx, cancel := context.WithCancel(context.Background())
+		t.Cleanup(cancel)
+
+		errChan := make(chan error, 1)
+		go func() {
+			errChan <- HTTPServer(server).Listener(ln).Run(ctx)
+		}()
+
+		resp, err := http.Get("http://" + ln.Addr().String())
+		require.NoError(t, err)
+		body, err := io.ReadAll(resp.Body)
+		_ = resp.Body.Close()
+		require.NoError(t, err)
+		require.Equal(t, "200 OK hello", resp.Status+" "+string(body))
 
 		cancel()
 
