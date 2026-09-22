@@ -23,36 +23,38 @@ func (r *httpServer) runnableName() string { return r.name }
 // HTTPServer returns a runnable that runs a [*http.Server].
 //
 // On context cancellation, it calls [http.Server.Shutdown] to gracefully drain
-// in-flight requests before returning. Options are set with chained methods:
-//   - ShutdownTimeout(d): time allowed for the drain, 5 seconds by default.
-//     Under a [Manager], keep it below the process phase of the shutdown budget.
-//   - Listener(ln): accept connections on ln instead of [http.Server.Addr].
+// in-flight requests before returning, for at most [DrainTimeout], 5 seconds by
+// default. The server listens on [http.Server.Addr] unless [Listener] is set.
 //
-// For example:
-//
-//	runnable.HTTPServer(server).ShutdownTimeout(10 * time.Second)
-func HTTPServer(server *http.Server) *httpServer {
-	return &httpServer{
+//	runnable.HTTPServer(server, runnable.DrainTimeout(10*time.Second))
+func HTTPServer(server *http.Server, opts ...HTTPServerOption) Runnable {
+	r := &httpServer{
 		name:            "httpserver",
 		server:          server,
 		shutdownTimeout: 5 * time.Second,
 	}
-}
-
-// ShutdownTimeout sets the maximum time allowed for graceful shutdown.
-// Defaults to 5 seconds.
-func (r *httpServer) ShutdownTimeout(dur time.Duration) *httpServer {
-	r.shutdownTimeout = dur
+	for _, opt := range opts {
+		opt(r)
+	}
 	return r
 }
 
-// Listener makes the server accept connections on ln instead of listening on
-// [http.Server.Addr]. Use it to listen on port 0 in tests, on a unix socket, on a
-// TLS listener, or on a socket passed by the service manager (socket activation).
-// The server takes ownership of ln and closes it on shutdown.
-func (r *httpServer) Listener(ln net.Listener) *httpServer {
-	r.listener = ln
-	return r
+// HTTPServerOption configures [HTTPServer].
+type HTTPServerOption func(*httpServer)
+
+// DrainTimeout sets the maximum time allowed for graceful shutdown of an
+// [HTTPServer]. Defaults to 5 seconds. Under a [Manager], keep it below the
+// process phase of the manager's shutdown budget.
+func DrainTimeout(d time.Duration) HTTPServerOption {
+	return func(r *httpServer) { r.shutdownTimeout = d }
+}
+
+// Listener makes an [HTTPServer] accept connections on ln instead of listening
+// on [http.Server.Addr]. Use it to listen on port 0 in tests, on a unix socket,
+// on a TLS listener, or on a socket passed by the service manager (socket
+// activation). The server takes ownership of ln and closes it on shutdown.
+func Listener(ln net.Listener) HTTPServerOption {
+	return func(r *httpServer) { r.listener = ln }
 }
 
 func (r *httpServer) Run(ctx context.Context) error {
