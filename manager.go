@@ -130,6 +130,10 @@ type completed struct {
 	err   error
 }
 
+// Run starts all services and processes, waits for the context to be cancelled
+// or for any runnable to return, then shuts down processes and services in turn.
+// It returns nil when every runnable stopped cleanly, otherwise the joined
+// errors of the runnables that failed or hung.
 func (m *Manager) Run(ctx context.Context) error {
 	parent := nameFromContext(ctx)
 	prefix := resolveName(ctx, m.runnableName())

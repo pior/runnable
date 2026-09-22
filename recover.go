@@ -48,7 +48,9 @@ func (e *PanicError) Format(f fmt.State, verb rune) {
 	}
 }
 
-// Recover returns a runnable that recovers when a runnable panics and return an error to represent this panic.
+// Recover returns a runnable that recovers a panic in the given runnable and
+// returns it as a [*PanicError]. [Manager] wraps every registered runnable with
+// it, so it is only needed on runnables run directly.
 func Recover(runnable Runnable) Runnable {
 	return &recoverRunner{"recover/" + runnableName(runnable), runnable}
 }

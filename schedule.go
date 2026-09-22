@@ -18,6 +18,10 @@ type ScheduleSpec func(lastStart, now time.Time) time.Time
 // On error from the inner runnable, Schedule stops and returns the error.
 // On context cancellation, returns [context.Canceled].
 //
+// For example:
+//
+//	runnable.Schedule(cleanup, runnable.DailyAt(3, 0), runnable.Every(6*time.Hour))
+//
 // For custom scheduling logic, pass a [ScheduleSpec] function directly, or
 // adapt any type with a Next method using [Cron]. For example, to use
 // github.com/robfig/cron/v3:

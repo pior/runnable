@@ -9,6 +9,8 @@ import (
 // the shutdown timeout expires.
 var ErrShutdownTimeout = errors.New("still running after shutdown timeout")
 
+// RunnableError is returned by the [Closer] wrappers when Close fails. Unwrap
+// returns the Close error.
 type RunnableError struct {
 	msg string
 	err error

@@ -7,7 +7,10 @@ import (
 	"syscall"
 )
 
-// Signal returns a runnable that runs the runnable and cancels it when the process receives a POSIX signal.
+// Signal returns a runnable that runs the given runnable and cancels its context
+// when the process receives one of the signals, [syscall.SIGINT] and
+// [syscall.SIGTERM] by default. The handler is reset after the first signal, so
+// a second signal terminates the process.
 func Signal(runnable Runnable, signals ...os.Signal) Runnable {
 	if len(signals) == 0 {
 		signals = append(signals, syscall.SIGINT)
