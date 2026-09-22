@@ -58,10 +58,10 @@ func Example() {
 	done := make(chan struct{})
 	cleanup := &CleanupTask{jobs: jobs, done: done}
 
-	m := runnable.Manager()
+	m := runnable.NewManager()
 	m.RegisterService(jobs)
-	m.Register(runnable.Schedule(cleanup, runnable.Every(500*time.Millisecond)))
-	m.Register(runnable.Func(func(_ context.Context) error {
+	m.RegisterProcess(runnable.Schedule(cleanup, runnable.Every(500*time.Millisecond)))
+	m.RegisterProcess(runnable.Func(func(_ context.Context) error {
 		<-done
 		return nil
 	}).Name("app"))

@@ -29,10 +29,10 @@ func main() {
 		runnable.Every(3*time.Second),
 	)
 
-	g := runnable.Manager()
+	g := runnable.NewManager()
 	g.RegisterService(jobs)
-	g.Register(serverRunner)
-	g.Register(monitor)
+	g.RegisterProcess(serverRunner)
+	g.RegisterProcess(monitor)
 
 	runnable.Run(g)
 }

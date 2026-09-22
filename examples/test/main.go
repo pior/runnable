@@ -147,10 +147,10 @@ func main() {
 	db := &DB{metrics: metrics}
 	server := &ServerWithDB{db}
 
-	g := runnable.Manager()
+	g := runnable.NewManager()
 	g.RegisterService(metrics)
 	g.RegisterService(db)
-	g.Register(server)
+	g.RegisterProcess(server)
 
 	runnable.Run(g)
 }

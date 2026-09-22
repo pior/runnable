@@ -10,7 +10,7 @@ import (
 	"time"
 )
 
-// Manager returns a new manager that coordinates the lifecycle of multiple runnables.
+// Manager coordinates the lifecycle of multiple runnables. Build it with [NewManager].
 //
 // Runnables are organized in two tiers: processes (foreground work) and services
 // (infrastructure like databases or queues). Shutdown is triggered when the context
@@ -22,57 +22,61 @@ import (
 // [Runnable], so managers can be nested for independent shutdown ordering.
 //
 // Registering the same runnable twice, or as both a process and a service, panics.
-func Manager() *manager {
-	return &manager{
-		name:            "manager",
-		shutdownTimeout: 10 * time.Second,
-	}
-}
-
-type manager struct {
+type Manager struct {
 	name            string
 	processes       []entry
 	services        []entry
 	shutdownTimeout time.Duration
 }
 
-func (m *manager) runnableName() string { return m.name }
+// NewManager returns a new [Manager].
+func NewManager() *Manager {
+	return &Manager{
+		name:            "manager",
+		shutdownTimeout: 10 * time.Second,
+	}
+}
+
+func (m *Manager) runnableName() string { return m.name }
 
 // Name sets the manager's name, used as a prefix in log messages.
-func (m *manager) Name(name string) *manager {
+func (m *Manager) Name(name string) *Manager {
 	m.name = name
 	return m
 }
 
 // ShutdownTimeout sets the maximum time allowed for each shutdown phase.
 // Defaults to 10 seconds.
-func (m *manager) ShutdownTimeout(dur time.Duration) *manager {
+func (m *Manager) ShutdownTimeout(dur time.Duration) *Manager {
 	m.shutdownTimeout = dur
 	return m
 }
 
-// ManagerRegistry is the interface for registering runnables with a Manager.
+// ManagerRegistry is the interface for registering runnables with a [Manager].
+// It lets helpers register runnables without being able to run the manager.
 type ManagerRegistry interface {
-	// Register registers processes. Processes are the primary runnables of the
+	// RegisterProcess registers processes. Processes are the primary runnables of the
 	// application. They are cancelled first during shutdown.
-	Register(runners ...Runnable) ManagerRegistry
+	RegisterProcess(processes ...Runnable)
 	// RegisterService registers services. Services are infrastructure runnables
 	// (databases, queues, etc.) that processes depend on. They are cancelled after
 	// all processes have stopped.
-	RegisterService(services ...Runnable) ManagerRegistry
+	RegisterService(services ...Runnable)
 }
 
-var _ ManagerRegistry = (*manager)(nil)
+var (
+	_ Runnable        = (*Manager)(nil)
+	_ ManagerRegistry = (*Manager)(nil)
+)
 
-// Register registers processes. Processes are the primary runnables of the
+// RegisterProcess registers processes. Processes are the primary runnables of the
 // application. They are cancelled first during shutdown.
 // Panics if any runnable is already registered. Duplicate detection only applies
 // to comparable runnables, in practice pointers.
-func (m *manager) Register(runners ...Runnable) ManagerRegistry {
-	for _, r := range runners {
-		m.processes = append(m.processes, m.newEntry(r))
+func (m *Manager) RegisterProcess(processes ...Runnable) {
+	for _, p := range processes {
+		m.processes = append(m.processes, m.newEntry(p))
 	}
-	return m
 }
 
 // RegisterService registers services. Services are infrastructure runnables
@@ -80,11 +84,10 @@ func (m *manager) Register(runners ...Runnable) ManagerRegistry {
 // all processes have stopped.
 // Panics if any runnable is already registered. Duplicate detection only applies
 // to comparable runnables, in practice pointers.
-func (m *manager) RegisterService(services ...Runnable) ManagerRegistry {
+func (m *Manager) RegisterService(services ...Runnable) {
 	for _, s := range services {
 		m.services = append(m.services, m.newEntry(s))
 	}
-	return m
 }
 
 // entry is a registered runnable with its name computed once at registration.
@@ -97,7 +100,7 @@ type entry struct {
 }
 
 // newEntry builds an entry for r, panicking if r is already registered.
-func (m *manager) newEntry(r Runnable) entry {
+func (m *Manager) newEntry(r Runnable) entry {
 	if m.isRegistered(r) {
 		panic(fmt.Sprintf("runnable %s already registered", runnableName(r)))
 	}
@@ -106,7 +109,7 @@ func (m *manager) newEntry(r Runnable) entry {
 
 // isRegistered reports whether r is already registered. Comparing interface values
 // holding a non-comparable type panics, so those are never considered duplicates.
-func (m *manager) isRegistered(r Runnable) bool {
+func (m *Manager) isRegistered(r Runnable) bool {
 	if !reflect.TypeOf(r).Comparable() {
 		return false
 	}
@@ -124,7 +127,7 @@ type completed struct {
 	err   error
 }
 
-func (m *manager) Run(ctx context.Context) error {
+func (m *Manager) Run(ctx context.Context) error {
 	prefix := m.runnableName()
 
 	svcCtx, svcCancel := context.WithCancel(context.WithoutCancel(ctx))
@@ -190,7 +193,7 @@ func (m *manager) Run(ctx context.Context) error {
 }
 
 // markStopped records the completion c in entries and logs it.
-func (m *manager) markStopped(entries []entry, c completed) entry {
+func (m *Manager) markStopped(entries []entry, c completed) entry {
 	entries[c.index].stopped = true
 	e := entries[c.index]
 	m.logCompleted(e, c.err)
@@ -198,7 +201,7 @@ func (m *manager) markStopped(entries []entry, c completed) entry {
 }
 
 // waitPhase waits for all running entries to complete, or for the deadline.
-func (m *manager) waitPhase(
+func (m *Manager) waitPhase(
 	entries []entry,
 	done <-chan completed,
 	deadline <-chan time.Time,
@@ -222,7 +225,7 @@ func (m *manager) waitPhase(
 	}
 }
 
-func (m *manager) logCompleted(e entry, err error) {
+func (m *Manager) logCompleted(e entry, err error) {
 	name := m.runnableName() + "/" + e.name
 	if err == nil || errors.Is(err, context.Canceled) {
 		logger.Info(name + ": stopped")
@@ -231,7 +234,7 @@ func (m *manager) logCompleted(e entry, err error) {
 	}
 }
 
-func (m *manager) collectError(errs *[]string, e entry, err error) {
+func (m *Manager) collectError(errs *[]string, e entry, err error) {
 	if err != nil && !errors.Is(err, context.Canceled) {
 		*errs = append(*errs, fmt.Sprintf("%s crashed with %+v", e.name, err))
 	}
