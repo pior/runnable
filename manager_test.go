@@ -266,3 +266,43 @@ func TestManager_DuplicateRegistration(t *testing.T) {
 		})
 	})
 }
+
+// mapRunnable is a non-comparable value type: comparing interfaces holding it panics.
+type mapRunnable struct {
+	_ map[string]int
+}
+
+func (r mapRunnable) Run(ctx context.Context) error {
+	<-ctx.Done()
+	return nil
+}
+
+func TestManager_NonComparableRunnable(t *testing.T) {
+	t.Run("as process", func(t *testing.T) {
+		synctest.Test(t, func(t *testing.T) {
+			m := Manager()
+			m.Register(mapRunnable{}, mapRunnable{})
+
+			require.NoError(t, m.Run(cancelledContext()))
+		})
+	})
+
+	t.Run("as service", func(t *testing.T) {
+		synctest.Test(t, func(t *testing.T) {
+			m := Manager()
+			m.RegisterService(mapRunnable{}, mapRunnable{})
+
+			require.NoError(t, m.Run(cancelledContext()))
+		})
+	})
+
+	t.Run("mixed with comparable runnables", func(t *testing.T) {
+		synctest.Test(t, func(t *testing.T) {
+			m := Manager()
+			m.Register(newDummyRunnable(), mapRunnable{})
+			m.RegisterService(mapRunnable{}, newCounterRunnable())
+
+			require.NoError(t, m.Run(cancelledContext()))
+		})
+	})
+}
