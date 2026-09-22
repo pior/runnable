@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"reflect"
 	"slices"
-	"strings"
 	"time"
 )
 
@@ -18,8 +17,11 @@ import (
 // first, then services, ensuring services remain available while processes drain.
 //
 // Each runnable is wrapped with [Recover] to catch panics. Errors from runnables are
-// collected, except [context.Canceled] which is ignored. A manager is itself a
-// [Runnable], so managers can be nested for independent shutdown ordering.
+// collected, except [context.Canceled] which is ignored. Run returns them joined with
+// [errors.Join], each wrapped with the runnable name, so they can be inspected with
+// [errors.Is] and [errors.As]. A runnable still running when the shutdown timeout
+// expires is reported with [ErrShutdownTimeout]. A manager is itself a [Runnable],
+// so managers can be nested for independent shutdown ordering.
 //
 // Registering the same runnable twice, or as both a process and a service, panics.
 type Manager struct {
@@ -160,7 +162,7 @@ func (m *Manager) Run(ctx context.Context) error {
 		logger.Info(prefix + "/" + proc.name + ": started")
 	}
 
-	var errs []string
+	var errs []error
 
 	// Wait for context cancellation or any runnable to complete.
 	select {
@@ -187,7 +189,7 @@ func (m *Manager) Run(ctx context.Context) error {
 	logger.Info(prefix + ": shutdown complete")
 
 	if len(errs) > 0 {
-		return fmt.Errorf("%s: %s", prefix, strings.Join(errs, ", "))
+		return fmt.Errorf("%s: %w", prefix, errors.Join(errs...))
 	}
 	return nil
 }
@@ -205,7 +207,7 @@ func (m *Manager) waitPhase(
 	entries []entry,
 	done <-chan completed,
 	deadline <-chan time.Time,
-	errs *[]string,
+	errs *[]error,
 ) {
 	running := func(e entry) bool { return !e.stopped }
 	for slices.ContainsFunc(entries, running) {
@@ -217,7 +219,7 @@ func (m *Manager) waitPhase(
 			for _, e := range entries {
 				if running(e) {
 					logger.Info(m.runnableName() + "/" + e.name + ": still running")
-					*errs = append(*errs, fmt.Sprintf("%s is still running", e.name))
+					*errs = append(*errs, fmt.Errorf("%s: %w", e.name, ErrShutdownTimeout))
 				}
 			}
 			return
@@ -234,8 +236,8 @@ func (m *Manager) logCompleted(e entry, err error) {
 	}
 }
 
-func (m *Manager) collectError(errs *[]string, e entry, err error) {
+func (m *Manager) collectError(errs *[]error, e entry, err error) {
 	if err != nil && !errors.Is(err, context.Canceled) {
-		*errs = append(*errs, fmt.Sprintf("%s crashed with %+v", e.name, err))
+		*errs = append(*errs, fmt.Errorf("%s: %w", e.name, err))
 	}
 }

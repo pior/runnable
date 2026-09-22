@@ -2,6 +2,7 @@ package runnable
 
 import (
 	"context"
+	"errors"
 	"testing"
 	"testing/synctest"
 	"time"
@@ -51,7 +52,7 @@ func TestManager_Dying_Process(t *testing.T) {
 		m.RegisterProcess(newDyingRunnable())
 
 		err := m.Run(context.Background())
-		require.EqualError(t, err, "manager: dyingRunnable crashed with dying")
+		require.EqualError(t, err, "manager: dyingRunnable: dying")
 	})
 }
 
@@ -71,7 +72,7 @@ func TestManager_Dying_Service(t *testing.T) {
 		proc.errChan <- nil
 
 		err := <-errChan
-		require.EqualError(t, err, "manager: dyingRunnable crashed with dying")
+		require.EqualError(t, err, "manager: dyingRunnable: dying")
 	})
 }
 
@@ -87,7 +88,8 @@ func TestManager_ShutdownTimeout(t *testing.T) {
 		m.RegisterProcess(blocked)
 
 		err := m.Run(cancelledContext())
-		require.EqualError(t, err, "manager: blockedRunnable is still running")
+		require.EqualError(t, err, "manager: blockedRunnable: still running after shutdown timeout")
+		require.ErrorIs(t, err, ErrShutdownTimeout)
 
 		close(unblock) // let the goroutine exit for synctest cleanup
 	})
@@ -324,8 +326,86 @@ func TestManager_RunTwice(t *testing.T) {
 		// The second run must not consider the runnable stopped from the first run.
 		unblock = make(chan struct{})
 		err := m.Run(cancelledContext())
-		require.EqualError(t, err, "manager: blockedRunnable is still running")
+		require.EqualError(t, err, "manager: blockedRunnable: still running after shutdown timeout")
 
 		close(unblock)
+	})
+}
+
+type panickingRunnable struct{}
+
+func (r *panickingRunnable) Run(context.Context) error {
+	panic("boom")
+}
+
+type failingCloser struct{}
+
+func (c *failingCloser) Close() error { return errors.New("close failed") }
+
+func TestManager_ErrorChain(t *testing.T) {
+	t.Run("panic in a process", func(t *testing.T) {
+		synctest.Test(t, func(t *testing.T) {
+			m := NewManager()
+			m.RegisterProcess(&panickingRunnable{})
+
+			err := m.Run(context.Background())
+			require.EqualError(t, err, "manager: panickingRunnable: runnable panicked: boom")
+
+			var panicErr *PanicError
+			require.ErrorAs(t, err, &panicErr)
+		})
+	})
+
+	t.Run("panic in a nested manager", func(t *testing.T) {
+		synctest.Test(t, func(t *testing.T) {
+			inner := NewManager().Name("inner")
+			inner.RegisterProcess(&panickingRunnable{})
+
+			outer := NewManager().Name("outer")
+			outer.RegisterProcess(inner)
+
+			err := outer.Run(context.Background())
+			require.EqualError(t, err, "outer: inner: inner: panickingRunnable: runnable panicked: boom")
+
+			var panicErr *PanicError
+			require.ErrorAs(t, err, &panicErr)
+		})
+	})
+
+	t.Run("crash and shutdown timeout", func(t *testing.T) {
+		synctest.Test(t, func(t *testing.T) {
+			unblock := make(chan struct{})
+			blocked := Func(func(context.Context) error {
+				<-unblock
+				return nil
+			}).Name("blockedRunnable")
+
+			m := NewManager().ShutdownTimeout(time.Second)
+			m.RegisterProcess(blocked)
+			m.RegisterProcess(&panickingRunnable{})
+
+			err := m.Run(context.Background())
+			require.EqualError(t, err, "manager: panickingRunnable: runnable panicked: boom\n"+
+				"blockedRunnable: still running after shutdown timeout")
+			require.ErrorIs(t, err, ErrShutdownTimeout)
+
+			var panicErr *PanicError
+			require.ErrorAs(t, err, &panicErr)
+
+			close(unblock) // let the goroutine exit for synctest cleanup
+		})
+	})
+
+	t.Run("closer error", func(t *testing.T) {
+		synctest.Test(t, func(t *testing.T) {
+			m := NewManager()
+			m.RegisterService(CloserErr(&failingCloser{}))
+
+			err := m.Run(cancelledContext())
+			require.EqualError(t, err, "manager: closer/failingCloser: closer: Close() returned an error: close failed")
+
+			var runnableErr *RunnableError
+			require.ErrorAs(t, err, &runnableErr)
+		})
 	})
 }
