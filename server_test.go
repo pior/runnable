@@ -29,7 +29,7 @@ func TestHTTPServer(t *testing.T) {
 
 		errChan := make(chan error, 1)
 		go func() {
-			errChan <- HTTPServer(server).Run(ctx)
+			errChan <- NewHTTPServer(server).Run(ctx)
 		}()
 
 		// Wait for the server to be accepting connections.
@@ -67,7 +67,7 @@ func TestHTTPServer(t *testing.T) {
 
 		errChan := make(chan error, 1)
 		go func() {
-			errChan <- HTTPServer(server).Listener(ln).Run(ctx)
+			errChan <- NewHTTPServer(server).Listener(ln).Run(ctx)
 		}()
 
 		resp, err := http.Get("http://" + ln.Addr().String())
@@ -93,7 +93,7 @@ func TestHTTPServer(t *testing.T) {
 			Handler: http.NotFoundHandler(),
 		}
 
-		err := HTTPServer(server).Run(context.Background())
+		err := NewHTTPServer(server).Run(context.Background())
 		require.Error(t, err)
 		require.Contains(t, err.Error(), "missing port in address")
 	})
@@ -109,7 +109,7 @@ func TestHTTPServer(t *testing.T) {
 
 		errChan := make(chan error, 1)
 		go func() {
-			errChan <- HTTPServer(server).Run(ctx)
+			errChan <- NewHTTPServer(server).Run(ctx)
 		}()
 
 		select {
@@ -126,7 +126,7 @@ func TestHTTPServer(t *testing.T) {
 			Handler: http.NotFoundHandler(),
 		}
 
-		r := Named(HTTPServer(server), "api")
+		r := Named(NewHTTPServer(server), "api")
 
 		require.Equal(t, "api", runnableName(r))
 	})
@@ -137,7 +137,7 @@ func TestHTTPServer(t *testing.T) {
 			Handler: http.NotFoundHandler(),
 		}
 
-		r := HTTPServer(server).ShutdownTimeout(5 * time.Second)
+		r := NewHTTPServer(server).ShutdownTimeout(5 * time.Second)
 
 		require.Equal(t, fmt.Sprint(5*time.Second), fmt.Sprint(r.shutdownTimeout))
 	})
@@ -152,7 +152,7 @@ func ExampleHTTPServer() {
 		Handler: http.NotFoundHandler(),
 	}
 
-	r := HTTPServer(server)
+	r := NewHTTPServer(server)
 
 	_ = r.Run(ctx)
 
@@ -171,7 +171,7 @@ func ExampleHTTPServer_error() {
 		Handler: http.NotFoundHandler(),
 	}
 
-	r := HTTPServer(server)
+	r := NewHTTPServer(server)
 
 	_ = r.Run(ctx)
 

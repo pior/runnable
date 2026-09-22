@@ -7,8 +7,8 @@
 // first, then the services they depend on. The entry points [Run], [RunFunc]
 // and [RunGroup] add signal handling for main.
 //
-// Wrappers compose behavior around a runnable: [HTTPServer], [Restart],
-// [Schedule], [Recover], [Signal], [Closer], [Func] and [Named].
+// Wrappers compose behavior around a runnable: [NewHTTPServer], [NewRestart],
+// [NewSchedule], [Recover], [Signal], [Closer], [Func] and [Named].
 //
 // Names flow through the context. A parent [Manager] or [Named] assigns them,
 // wrappers pass them through, and [NameFromContext] reads them.

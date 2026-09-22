@@ -19,9 +19,9 @@ func main() {
 			_, _ = fmt.Fprintln(rw, "Job enqueued!")
 		}),
 	}
-	serverRunner := runnable.HTTPServer(server)
+	serverRunner := runnable.NewHTTPServer(server)
 
-	monitor := runnable.Schedule(
+	monitor := runnable.NewSchedule(
 		runnable.Func(func(ctx context.Context) error {
 			fmt.Printf("Task executed: %d\n", jobs.Executed())
 			return nil
