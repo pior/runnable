@@ -266,3 +266,66 @@ func TestManager_DuplicateRegistration(t *testing.T) {
 		})
 	})
 }
+
+// mapRunnable is a non-comparable value type: comparing interfaces holding it panics.
+type mapRunnable struct {
+	_ map[string]int
+}
+
+func (r mapRunnable) Run(ctx context.Context) error {
+	<-ctx.Done()
+	return nil
+}
+
+func TestManager_NonComparableRunnable(t *testing.T) {
+	t.Run("as process", func(t *testing.T) {
+		synctest.Test(t, func(t *testing.T) {
+			m := Manager()
+			m.Register(mapRunnable{}, mapRunnable{})
+
+			require.NoError(t, m.Run(cancelledContext()))
+		})
+	})
+
+	t.Run("as service", func(t *testing.T) {
+		synctest.Test(t, func(t *testing.T) {
+			m := Manager()
+			m.RegisterService(mapRunnable{}, mapRunnable{})
+
+			require.NoError(t, m.Run(cancelledContext()))
+		})
+	})
+
+	t.Run("mixed with comparable runnables", func(t *testing.T) {
+		synctest.Test(t, func(t *testing.T) {
+			m := Manager()
+			m.Register(newDummyRunnable(), mapRunnable{})
+			m.RegisterService(mapRunnable{}, newCounterRunnable())
+
+			require.NoError(t, m.Run(cancelledContext()))
+		})
+	})
+}
+
+func TestManager_RunTwice(t *testing.T) {
+	synctest.Test(t, func(t *testing.T) {
+		unblock := make(chan struct{})
+		blocked := Func(func(ctx context.Context) error {
+			<-unblock
+			return nil
+		}).Name("blockedRunnable")
+
+		m := Manager().ShutdownTimeout(time.Second)
+		m.Register(blocked)
+
+		close(unblock)
+		require.NoError(t, m.Run(cancelledContext()))
+
+		// The second run must not consider the runnable stopped from the first run.
+		unblock = make(chan struct{})
+		err := m.Run(cancelledContext())
+		require.EqualError(t, err, "manager: blockedRunnable is still running")
+
+		close(unblock)
+	})
+}
