@@ -18,6 +18,7 @@ This release is breaking, under a minor version. The module path stays
 | `PanicError{value}` unexported | `PanicError{Value, Stack}`, `%+v` prints stack |
 | HTTPServer default drain 30s | 5s |
 | Manager log lines and error messages | new format, names from context |
+| `.Name(string)` on `Func`, `HTTPServer`, `Schedule`, `Manager` | removed, use `Named(r, name)` |
 
 ### Added
 
