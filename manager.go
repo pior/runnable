@@ -91,6 +91,9 @@ func (m *manager) RegisterService(services ...Runnable) ManagerRegistry {
 type entry struct {
 	runnable Runnable
 	name     string
+	// stopped is run state: reset when Run starts, set when the runnable returns.
+	// Concurrent Run calls on the same manager are not supported.
+	stopped bool
 }
 
 // newEntry builds an entry for r, panicking if r is already registered.
@@ -121,27 +124,6 @@ type completed struct {
 	err   error
 }
 
-// activeSet tracks which entries of a slice are still running, by index.
-type activeSet struct {
-	running []bool
-	count   int
-}
-
-func newActiveSet(n int) *activeSet {
-	running := make([]bool, n)
-	for i := range running {
-		running[i] = true
-	}
-	return &activeSet{running: running, count: n}
-}
-
-func (a *activeSet) done(i int) {
-	if a.running[i] {
-		a.running[i] = false
-		a.count--
-	}
-}
-
 func (m *manager) Run(ctx context.Context) error {
 	prefix := m.runnableName()
 
@@ -153,6 +135,13 @@ func (m *manager) Run(ctx context.Context) error {
 
 	svcDone := make(chan completed, len(m.services))
 	procDone := make(chan completed, len(m.processes))
+
+	for i := range m.services {
+		m.services[i].stopped = false
+	}
+	for i := range m.processes {
+		m.processes[i].stopped = false
+	}
 
 	for i, svc := range m.services {
 		go func() {
@@ -168,36 +157,29 @@ func (m *manager) Run(ctx context.Context) error {
 		logger.Info(prefix + "/" + proc.name + ": started")
 	}
 
-	// Track completed runnables from the initial trigger.
 	var errs []string
-	activeProcs := newActiveSet(len(m.processes))
-	activeSvcs := newActiveSet(len(m.services))
 
 	// Wait for context cancellation or any runnable to complete.
 	select {
 	case <-ctx.Done():
 		logger.Info(prefix+": starting shutdown", "reason", "context cancelled")
 	case c := <-procDone:
-		e := m.processes[c.index]
-		activeProcs.done(c.index)
-		m.logCompleted(e, c.err)
+		e := m.markStopped(m.processes, c)
 		m.collectError(&errs, e, c.err)
 		logger.Info(prefix+": starting shutdown", "reason", e.name+" died")
 	case c := <-svcDone:
-		e := m.services[c.index]
-		activeSvcs.done(c.index)
-		m.logCompleted(e, c.err)
+		e := m.markStopped(m.services, c)
 		m.collectError(&errs, e, c.err)
 		logger.Info(prefix+": starting shutdown", "reason", e.name+" died")
 	}
 
 	// Phase 1: stop processes
 	procCancel()
-	m.waitPhase(m.processes, activeProcs, procDone, time.After(m.shutdownTimeout), &errs)
+	m.waitPhase(m.processes, procDone, time.After(m.shutdownTimeout), &errs)
 
 	// Phase 2: stop services
 	svcCancel()
-	m.waitPhase(m.services, activeSvcs, svcDone, time.After(m.shutdownTimeout), &errs)
+	m.waitPhase(m.services, svcDone, time.After(m.shutdownTimeout), &errs)
 
 	logger.Info(prefix + ": shutdown complete")
 
@@ -207,26 +189,32 @@ func (m *manager) Run(ctx context.Context) error {
 	return nil
 }
 
-// waitPhase waits for all active entries to complete, or for the deadline.
+// markStopped records the completion c in entries and logs it.
+func (m *manager) markStopped(entries []entry, c completed) entry {
+	entries[c.index].stopped = true
+	e := entries[c.index]
+	m.logCompleted(e, c.err)
+	return e
+}
+
+// waitPhase waits for all running entries to complete, or for the deadline.
 func (m *manager) waitPhase(
 	entries []entry,
-	active *activeSet,
 	done <-chan completed,
 	deadline <-chan time.Time,
 	errs *[]string,
 ) {
-	for active.count > 0 {
+	running := func(e entry) bool { return !e.stopped }
+	for slices.ContainsFunc(entries, running) {
 		select {
 		case c := <-done:
-			e := entries[c.index]
-			active.done(c.index)
-			m.logCompleted(e, c.err)
+			e := m.markStopped(entries, c)
 			m.collectError(errs, e, c.err)
 		case <-deadline:
-			for i, running := range active.running {
-				if running {
-					logger.Info(m.runnableName() + "/" + entries[i].name + ": still running")
-					*errs = append(*errs, fmt.Sprintf("%s is still running", entries[i].name))
+			for _, e := range entries {
+				if running(e) {
+					logger.Info(m.runnableName() + "/" + e.name + ": still running")
+					*errs = append(*errs, fmt.Sprintf("%s is still running", e.name))
 				}
 			}
 			return

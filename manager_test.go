@@ -306,3 +306,26 @@ func TestManager_NonComparableRunnable(t *testing.T) {
 		})
 	})
 }
+
+func TestManager_RunTwice(t *testing.T) {
+	synctest.Test(t, func(t *testing.T) {
+		unblock := make(chan struct{})
+		blocked := Func(func(ctx context.Context) error {
+			<-unblock
+			return nil
+		}).Name("blockedRunnable")
+
+		m := Manager().ShutdownTimeout(time.Second)
+		m.Register(blocked)
+
+		close(unblock)
+		require.NoError(t, m.Run(cancelledContext()))
+
+		// The second run must not consider the runnable stopped from the first run.
+		unblock = make(chan struct{})
+		err := m.Run(cancelledContext())
+		require.EqualError(t, err, "manager: blockedRunnable is still running")
+
+		close(unblock)
+	})
+}
