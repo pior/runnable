@@ -409,3 +409,60 @@ func TestManager_ErrorChain(t *testing.T) {
 		})
 	})
 }
+
+func TestManager_ShutdownBudget(t *testing.T) {
+	// blockUntil returns a runnable that ignores cancellation until unblock is closed.
+	blockUntil := func(name string, unblock chan struct{}) Runnable {
+		return Func(func(context.Context) error {
+			<-unblock
+			return nil
+		}).Name(name)
+	}
+
+	t.Run("services get what processes left", func(t *testing.T) {
+		synctest.Test(t, func(t *testing.T) {
+			slowProc := Func(func(ctx context.Context) error {
+				<-ctx.Done()
+				time.Sleep(60 * time.Millisecond)
+				return nil
+			}).Name("slowProcess")
+			unblock := make(chan struct{})
+
+			m := NewManager().ShutdownTimeout(100 * time.Millisecond)
+			m.RegisterProcess(slowProc)
+			m.RegisterService(blockUntil("blockedService", unblock))
+
+			start := time.Now()
+			err := m.Run(cancelledContext())
+			require.Equal(t, "100ms", time.Since(start).String())
+			require.EqualError(t, err, "manager: blockedService: still running after shutdown timeout")
+			require.ErrorIs(t, err, ErrShutdownTimeout)
+
+			close(unblock) // let the goroutine exit for synctest cleanup
+		})
+	})
+
+	t.Run("services are cancelled after processes spend the budget", func(t *testing.T) {
+		synctest.Test(t, func(t *testing.T) {
+			unblock := make(chan struct{})
+			svc := newMockRunnable()
+
+			m := NewManager().ShutdownTimeout(100 * time.Millisecond)
+			m.RegisterProcess(blockUntil("blockedProcess", unblock))
+			m.RegisterService(svc)
+
+			start := time.Now()
+			err := m.Run(cancelledContext())
+			require.Equal(t, "100ms", time.Since(start).String())
+
+			// The budget is spent when services are cancelled, so they are reported too.
+			require.EqualError(t, err, "manager: blockedProcess: still running after shutdown timeout\n"+
+				"mockRunnable: still running after shutdown timeout")
+			require.ErrorIs(t, err, ErrShutdownTimeout)
+
+			<-svc.cancelledChan
+			svc.errChan <- nil
+			close(unblock) // let the goroutines exit for synctest cleanup
+		})
+	})
+}
