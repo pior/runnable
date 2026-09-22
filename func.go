@@ -16,7 +16,8 @@ type funcRunnable struct {
 
 func (f *funcRunnable) runnableName() string { return f.name }
 
-// Func returns a Runnable from a function. The name is derived from the function using reflection.
+// Func returns a [Runnable] from a function. Its name is the function name, as
+// reported by [runtime.FuncForPC].
 func Func(fn RunnableFunc) *funcRunnable {
 	name := runtime.FuncForPC(reflect.ValueOf(fn).Pointer()).Name()
 	return &funcRunnable{name, fn}

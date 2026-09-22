@@ -9,11 +9,8 @@ import (
 //
 // Cancellation contract: when the context is cancelled, Run must stop and return
 // either nil or ctx.Err(), which is [context.Canceled] under [Manager] and [Run].
-// Both are a clean stop. Any other error, including [context.DeadlineExceeded],
-// is a failure.
-//
-// Return ctx.Err() when you stopped because you were told to, and nil when your
-// work is done.
+// Either is fine, both are a clean stop. Any other error, including
+// [context.DeadlineExceeded], is a failure.
 type Runnable interface {
 	Run(context.Context) error
 }

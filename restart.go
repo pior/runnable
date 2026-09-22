@@ -8,18 +8,23 @@ import (
 // Restart returns a runnable that keeps running the given runnable, restarting it
 // after both successful exits and errors. Panics are recovered and treated as errors.
 //
-// On successful exit, the runnable is restarted after [restart.Delay] (default: immediate).
-// On error, the runnable is restarted after a backoff period determined by
-// [restart.ErrorBackoff] (default: immediate for ≤3 errors, 10s for ≤10, then 1m).
-//
 // The error count tracks consecutive errors and resets to zero after any successful
-// run. Use [restart.ErrorResetAfter] to also reset after a run that lasted long
-// enough before failing.
+// run. Restart loops indefinitely unless limited. When the restart limit is reached,
+// Restart returns nil. When the error limit is reached, Restart returns the last
+// error. Context cancellation stops the loop and returns [context.Canceled].
 //
-// Restart loops indefinitely unless limited by [restart.Limit] or [restart.ErrorLimit].
-// When the restart limit is reached, Restart returns nil. When the error limit is
-// reached, Restart returns the last error.
-// Context cancellation stops the loop and returns [context.Canceled].
+// Options are set with chained methods:
+//   - Delay(d): wait before restarting after a successful exit, immediate by default.
+//   - ErrorBackoff(fn): delay before restarting after an error, from the consecutive
+//     error count. By default immediate for the first 3 errors, 10s up to 10, then 1m.
+//   - ErrorResetAfter(d): also reset the error count when a run lasted at least d
+//     before failing, so long-running services do not accumulate stale errors.
+//   - Limit(n): maximum restarts after successful exits, unlimited by default.
+//   - ErrorLimit(n): maximum consecutive restarts after errors, unlimited by default.
+//
+// For example:
+//
+//	runnable.Restart(worker).ErrorLimit(5).ErrorResetAfter(time.Minute)
 func Restart(runnable Runnable) *restart {
 	return &restart{
 		name:           "restart/" + runnableName(runnable),

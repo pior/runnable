@@ -1,6 +1,6 @@
 # Runnable
 
-[![Build Status](https://github.com/pior/runnable/actions/workflows/go.yml/badge.svg?branch=master)](https://github.com/pior/runnable/actions/workflows/go.yml)
+[![Build Status](https://github.com/pior/runnable/actions/workflows/go.yml/badge.svg?branch=main)](https://github.com/pior/runnable/actions/workflows/go.yml)
 [![Go Reference](https://pkg.go.dev/badge/github.com/pior/runnable.svg)](https://pkg.go.dev/github.com/pior/runnable)
 [![Go Report Card](https://goreportcard.com/badge/github.com/pior/runnable)](https://goreportcard.com/report/github.com/pior/runnable)
 
@@ -12,7 +12,7 @@ type Runnable interface {
 }
 ```
 
-Shutdown is driven by context cancellation. When the context is cancelled, each runnable stops gracefully and returns `ctx.Err()` (it was told to stop) or `nil` (its work is done). Any other error, including `context.DeadlineExceeded`, is a failure.
+Shutdown is driven by context cancellation. When the context is cancelled, a runnable stops and returns either `nil` or `ctx.Err()`, both are a clean stop. Any other error, including `context.DeadlineExceeded`, is a failure.
 
 ## Manager
 
@@ -93,11 +93,11 @@ Wrappers compose behavior around a `Runnable`:
 | Wrapper | Description |
 |---------|-------------|
 | `HTTPServer(server)` | Start and gracefully shut down a `*http.Server` |
-| `Restart(r, opts...)` | Auto-restart on failure, with configurable limits and delays |
+| `Restart(r)` | Auto-restart on exit and on failure, with configurable limits and backoff |
 | `Schedule(r, specs...)` | Run on a schedule: intervals, hourly, daily, cron, or custom |
 | `Recover(r)` | Catch panics and return them as errors |
 | `Signal(r, signals...)` | Cancel context on OS signals |
-| `Closer(c)` | Call `Close()` on context cancellation |
+| `Closer(c)` | Call `Close()` on context cancellation, also `CloserErr`, `CloserCtx`, `CloserCtxErr` |
 | `Func(fn)` | Adapt a `func(context.Context) error` to `Runnable` |
 | `Named(r, name)` | Give a runnable a name, readable with `NameFromContext` |
 
