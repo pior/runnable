@@ -174,11 +174,11 @@ func (m *Manager) Run(ctx context.Context) error {
 	case c := <-procDone:
 		e := markStopped(prefix, m.processes, c)
 		collectError(&errs, e, c.err)
-		logger.Info(prefix+": starting shutdown", "reason", e.name+" died")
+		logger.Info(prefix+": starting shutdown", "reason", completionReason(e, c.err))
 	case c := <-svcDone:
 		e := markStopped(prefix, m.services, c)
 		collectError(&errs, e, c.err)
-		logger.Info(prefix+": starting shutdown", "reason", e.name+" died")
+		logger.Info(prefix+": starting shutdown", "reason", completionReason(e, c.err))
 	}
 
 	// One budget for both phases: processes get half, services get the rest.
@@ -239,6 +239,14 @@ func waitPhase(
 			return
 		}
 	}
+}
+
+// completionReason describes why the entry that triggered the shutdown stopped.
+func completionReason(e entry, err error) string {
+	if err == nil {
+		return e.name + " completed"
+	}
+	return e.name + " died"
 }
 
 func logCompleted(name string, err error) {

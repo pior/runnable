@@ -3,6 +3,7 @@ package runnable
 import (
 	"context"
 	"errors"
+	"strings"
 	"testing"
 	"testing/synctest"
 	"time"
@@ -53,6 +54,47 @@ func TestManager_Dying_Process(t *testing.T) {
 
 		err := m.Run(context.Background())
 		require.EqualError(t, err, "manager: dyingRunnable: dying")
+	})
+}
+
+func TestManager_ShutdownReason(t *testing.T) {
+	// shutdownLog runs a manager until the registered runnable returns, and
+	// returns the shutdown log line.
+	shutdownLog := func(t *testing.T, register func(*Manager)) string {
+		t.Helper()
+		var line string
+		synctest.Test(t, func(t *testing.T) {
+			logs := captureLogs(t)
+			m := NewManager()
+			register(m)
+			_ = m.Run(context.Background())
+			for l := range strings.Lines(logs.String()) {
+				if strings.Contains(l, "starting shutdown") {
+					line = l
+				}
+			}
+		})
+		return line
+	}
+
+	t.Run("process returned nil", func(t *testing.T) {
+		line := shutdownLog(t, func(m *Manager) { m.RegisterProcess(newCounterRunnable()) })
+		require.Equal(t, "level=INFO msg=\"manager: starting shutdown\" reason=\"counter completed\"\n", line)
+	})
+
+	t.Run("process returned an error", func(t *testing.T) {
+		line := shutdownLog(t, func(m *Manager) { m.RegisterProcess(newDyingRunnable()) })
+		require.Equal(t, "level=INFO msg=\"manager: starting shutdown\" reason=\"dyingRunnable died\"\n", line)
+	})
+
+	t.Run("service returned nil", func(t *testing.T) {
+		line := shutdownLog(t, func(m *Manager) { m.RegisterService(newCounterRunnable()) })
+		require.Equal(t, "level=INFO msg=\"manager: starting shutdown\" reason=\"counter completed\"\n", line)
+	})
+
+	t.Run("service returned an error", func(t *testing.T) {
+		line := shutdownLog(t, func(m *Manager) { m.RegisterService(newDyingRunnable()) })
+		require.Equal(t, "level=INFO msg=\"manager: starting shutdown\" reason=\"dyingRunnable died\"\n", line)
 	})
 }
 

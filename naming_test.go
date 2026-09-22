@@ -162,7 +162,7 @@ func TestNameFromContext(t *testing.T) {
 			require.NoError(t, outer.Run(context.Background()))
 			require.Equal(t, "manager/inner/x", got)
 			require.Contains(t, logs.String(), `msg="manager/inner/x: started"`)
-			require.Contains(t, logs.String(), `msg="manager/inner: starting shutdown" reason="x died"`)
+			require.Contains(t, logs.String(), `msg="manager/inner: starting shutdown" reason="x completed"`)
 		})
 	})
 }

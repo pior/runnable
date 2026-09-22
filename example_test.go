@@ -76,7 +76,7 @@ func Example() {
 	// JobQueue: cleanup-2
 	// JobQueue: cleanup-3
 	// level=INFO msg="manager/app: stopped"
-	// level=INFO msg="manager: starting shutdown" reason="app died"
+	// level=INFO msg="manager: starting shutdown" reason="app completed"
 	// level=INFO msg="manager/schedule/CleanupTask: stopped"
 	// level=INFO msg="manager/JobQueue: stopped"
 	// level=INFO msg="manager: shutdown complete"
