@@ -77,7 +77,7 @@ Wrappers compose behavior around a `Runnable`:
 |---------|-------------|
 | `HTTPServer(server)` | Start and gracefully shut down a `*http.Server` |
 | `Restart(r, opts...)` | Auto-restart on failure, with configurable limits and delays |
-| `Schedule(r, specs...)` | Run on a schedule: intervals, hourly, daily, or custom |
+| `Schedule(r, specs...)` | Run on a schedule: intervals, hourly, daily, cron, or custom |
 | `Recover(r)` | Catch panics and return them as errors |
 | `Signal(r, signals...)` | Cancel context on OS signals |
 | `Closer(c)` | Call `Close()` on context cancellation |
