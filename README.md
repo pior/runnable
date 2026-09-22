@@ -12,7 +12,7 @@ type Runnable interface {
 }
 ```
 
-Shutdown is driven by context cancellation. When the context is cancelled, each runnable stops gracefully and returns.
+Shutdown is driven by context cancellation. When the context is cancelled, each runnable stops gracefully and returns `ctx.Err()` (it was told to stop) or `nil` (its work is done). Any other error, including `context.DeadlineExceeded`, is a failure.
 
 ## Manager
 
@@ -36,6 +36,22 @@ func main() {
 
 A `Manager` is itself a `Runnable`, so managers can be nested for independent shutdown ordering.
 
+### Shutdown budget
+
+`ShutdownTimeout` (default 10s) is the total budget for both shutdown phases. Processes get half of it, services get the rest: at least half, more when processes stop early. Runnables still running when their phase ends are reported with `ErrShutdownTimeout`.
+
+It maps to a platform grace period such as Kubernetes `terminationGracePeriodSeconds`, which must exceed it to leave room for the process to exit. For example, with a 30s grace period:
+
+```go
+m := runnable.NewManager().ShutdownTimeout(25 * time.Second)
+```
+
+For nested managers, the inner budget must be smaller than the outer one. `HTTPServer` drains for 5s by default, half of the default budget.
+
+### Names
+
+Each runnable in a manager runs with its full name in the context, such as `manager/restart/JobQueue`, used in log lines and errors. Read it with `NameFromContext(ctx)`, and set it with `Named(r, "api")`.
+
 <details>
   <summary>Example logs</summary>
 
@@ -45,6 +61,7 @@ INFO manager/StupidJobQueue: started
 INFO manager/httpserver: started
 INFO manager/schedule/main.main.func2: started
 INFO manager/httpserver: listening addr=localhost:8000
+Task executed: 0
 ...
 ^C
 INFO signal/manager: received signal signal=interrupt
