@@ -114,7 +114,7 @@ func TestScheduleSpec_Cron(t *testing.T) {
 
 	t.Run("earliest across specs", func(t *testing.T) {
 		fake := &fakeNextSchedule{next: time.Date(2025, 1, 1, 14, 25, 0, 0, time.UTC)}
-		s := Schedule(newDummyRunnable(), HourlyAt(30), Cron(fake))
+		s := Schedule(newDummyRunnable(), HourlyAt(30), Cron(fake)).(*schedule)
 
 		got := s.nextTime(lastStart, now)
 
@@ -124,7 +124,7 @@ func TestScheduleSpec_Cron(t *testing.T) {
 }
 
 func TestScheduleSpec_MultipleSpecs(t *testing.T) {
-	s := Schedule(newDummyRunnable(), Every(time.Hour), HourlyAt(30))
+	s := Schedule(newDummyRunnable(), Every(time.Hour), HourlyAt(30)).(*schedule)
 
 	lastStart := time.Date(2025, 1, 1, 14, 0, 0, 0, time.UTC)
 	now := time.Date(2025, 1, 1, 14, 20, 0, 0, time.UTC)

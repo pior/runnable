@@ -21,7 +21,7 @@ func TestRestart(t *testing.T) {
 	t.Run("restart limit", func(t *testing.T) {
 		counter := newCounterRunnable()
 
-		r := Restart(counter).Limit(10)
+		r := Restart(counter, Limit(10))
 		err := r.Run(context.Background())
 		require.NoError(t, err)
 
@@ -31,9 +31,9 @@ func TestRestart(t *testing.T) {
 	t.Run("error limit", func(t *testing.T) {
 		counter := newDyingRunnable()
 
-		r := Restart(counter).
-			ErrorLimit(10).
-			ErrorBackoff(func(int) time.Duration { return 0 })
+		r := Restart(counter,
+			ErrorLimit(10),
+			ErrorBackoff(func(int) time.Duration { return 0 }))
 		err := r.Run(context.Background())
 		require.EqualError(t, err, "dying")
 
@@ -52,10 +52,10 @@ func TestRestart(t *testing.T) {
 			return nil
 		})
 
-		r := Restart(fn).
-			ErrorLimit(2).
-			Limit(3).
-			ErrorBackoff(func(int) time.Duration { return 0 })
+		r := Restart(fn,
+			ErrorLimit(2),
+			Limit(3),
+			ErrorBackoff(func(int) time.Duration { return 0 }))
 		err := r.Run(context.Background())
 		require.NoError(t, err) // hit restart limit, not error limit
 
@@ -73,8 +73,7 @@ func TestRestart(t *testing.T) {
 			panic("boom")
 		})
 
-		r := Restart(fn).ErrorLimit(3).
-			ErrorBackoff(func(int) time.Duration { return 0 })
+		r := Restart(fn, ErrorLimit(3), ErrorBackoff(func(int) time.Duration { return 0 }))
 		err := r.Run(context.Background())
 
 		require.Equal(t, 3, callCount)
@@ -93,9 +92,9 @@ func TestRestart(t *testing.T) {
 
 			ctx, cancel := context.WithCancel(context.Background())
 
-			r := Restart(fn).ErrorBackoff(func(n int) time.Duration {
+			r := Restart(fn, ErrorBackoff(func(n int) time.Duration {
 				return 10 * time.Second
-			})
+			}))
 
 			errChan := make(chan error, 1)
 			go func() {
@@ -135,12 +134,12 @@ func TestRestart(t *testing.T) {
 			ctx, cancel := context.WithCancel(context.Background())
 
 			backoffCalls := []int{}
-			r := Restart(fn).
-				ErrorResetAfter(30 * time.Minute).
+			r := Restart(fn,
+				ErrorResetAfter(30*time.Minute),
 				ErrorBackoff(func(n int) time.Duration {
 					backoffCalls = append(backoffCalls, n)
 					return 0
-				})
+				}))
 
 			errChan := make(chan error, 1)
 			go func() {
@@ -172,7 +171,7 @@ func ExampleRestart() {
 	defer cancel()
 
 	worker := newDyingRunnable()
-	r := Restart(worker).ErrorLimit(3)
+	r := Restart(worker, ErrorLimit(3))
 	_ = r.Run(ctx)
 
 	// Output:
@@ -187,7 +186,7 @@ func ExampleRestart_worker() {
 	defer cancel()
 
 	worker := newCounterRunnable()
-	r := Restart(worker).Limit(2).Delay(time.Millisecond)
+	r := Restart(worker, Limit(2), Delay(time.Millisecond))
 	_ = r.Run(ctx)
 
 	// Output:

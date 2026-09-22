@@ -92,8 +92,8 @@ Wrappers compose behavior around a `Runnable`:
 
 | Wrapper | Description |
 |---------|-------------|
-| `HTTPServer(server)` | Start and gracefully shut down a `*http.Server` |
-| `Restart(r)` | Auto-restart on exit and on failure, with configurable limits and backoff |
+| `HTTPServer(server, opts...)` | Start and gracefully shut down a `*http.Server` |
+| `Restart(r, opts...)` | Auto-restart on exit and on failure, with configurable limits and backoff |
 | `Schedule(r, specs...)` | Run on a schedule: intervals, hourly, daily, cron, or custom |
 | `Recover(r)` | Catch panics and return them as errors |
 | `Signal(r, signals...)` | Cancel context on OS signals |

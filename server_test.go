@@ -67,7 +67,7 @@ func TestHTTPServer(t *testing.T) {
 
 		errChan := make(chan error, 1)
 		go func() {
-			errChan <- HTTPServer(server).Listener(ln).Run(ctx)
+			errChan <- HTTPServer(server, Listener(ln)).Run(ctx)
 		}()
 
 		resp, err := http.Get("http://" + ln.Addr().String())
@@ -137,7 +137,7 @@ func TestHTTPServer(t *testing.T) {
 			Handler: http.NotFoundHandler(),
 		}
 
-		r := HTTPServer(server).ShutdownTimeout(5 * time.Second)
+		r := HTTPServer(server, DrainTimeout(5*time.Second)).(*httpServer)
 
 		require.Equal(t, fmt.Sprint(5*time.Second), fmt.Sprint(r.shutdownTimeout))
 	})

@@ -19,13 +19,16 @@ This release is breaking, under a minor version. The module path stays
 | HTTPServer default drain 30s | 5s |
 | Manager log lines and error messages | new format, names from context |
 | `.Name(string)` on `Func`, `HTTPServer`, `Schedule`, `Manager` | removed, use `Named(r, name)` |
+| `HTTPServer(s).ShutdownTimeout(d).Listener(ln)` | `HTTPServer(s, DrainTimeout(d), Listener(ln))` |
+| `Restart(r).Limit(n).ErrorLimit(n).Delay(d).ErrorBackoff(fn).ErrorResetAfter(d)` | `Restart(r, Limit(n), ...)` options |
+| `HTTPServer`, `Restart`, `Schedule`, `Func` return unexported types | return `Runnable` |
 
 ### Added
 
 - `Named(r, name)`: give a runnable a name.
 - `NameFromContext(ctx)`: read the full name assigned by parents, such as `manager/restart/JobQueue`.
 - `ErrShutdownTimeout`: sentinel for runnables still running when the shutdown budget expires.
-- `HTTPServer(s).Listener(ln)`: serve on a provided `net.Listener`.
+- `HTTPServer(s, Listener(ln))`: serve on a provided `net.Listener`.
 - `Cron(s)`: schedule spec for any type with a `Next(time.Time) time.Time` method, such as robfig/cron schedules.
 
 ### Fixed
