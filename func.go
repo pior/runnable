@@ -18,7 +18,7 @@ func (f *funcRunnable) runnableName() string { return f.name }
 
 // Func returns a [Runnable] from a function. Its name is the function name, as
 // reported by [runtime.FuncForPC].
-func Func(fn RunnableFunc) *funcRunnable {
+func Func(fn RunnableFunc) Runnable {
 	name := runtime.FuncForPC(reflect.ValueOf(fn).Pointer()).Name()
 	return &funcRunnable{name, fn}
 }

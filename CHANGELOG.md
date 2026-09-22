@@ -19,6 +19,8 @@ This release is breaking, under a minor version. The module path stays
 | HTTPServer default drain 30s | 5s |
 | Manager log lines and error messages | new format, names from context |
 | `.Name(string)` on `Func`, `HTTPServer`, `Schedule`, `Manager` | removed, use `Named(r, name)` |
+| `HTTPServer`, `Restart`, `Schedule` return unexported types | return `*Server`, `*Restarter`, `*Scheduler` |
+| `Func` returns an unexported type | returns `Runnable` |
 
 ### Added
 
