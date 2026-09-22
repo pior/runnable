@@ -114,7 +114,7 @@ func TestScheduleSpec_Cron(t *testing.T) {
 
 	t.Run("earliest across specs", func(t *testing.T) {
 		fake := &fakeNextSchedule{next: time.Date(2025, 1, 1, 14, 25, 0, 0, time.UTC)}
-		s := Schedule(newDummyRunnable(), HourlyAt(30), Cron(fake))
+		s := NewSchedule(newDummyRunnable(), HourlyAt(30), Cron(fake))
 
 		got := s.nextTime(lastStart, now)
 
@@ -124,7 +124,7 @@ func TestScheduleSpec_Cron(t *testing.T) {
 }
 
 func TestScheduleSpec_MultipleSpecs(t *testing.T) {
-	s := Schedule(newDummyRunnable(), Every(time.Hour), HourlyAt(30))
+	s := NewSchedule(newDummyRunnable(), Every(time.Hour), HourlyAt(30))
 
 	lastStart := time.Date(2025, 1, 1, 14, 0, 0, 0, time.UTC)
 	now := time.Date(2025, 1, 1, 14, 20, 0, 0, time.UTC)
@@ -136,7 +136,7 @@ func TestScheduleSpec_MultipleSpecs(t *testing.T) {
 }
 
 func TestSchedule_Cancellation(t *testing.T) {
-	runner := Schedule(newDummyRunnable(), Every(time.Second))
+	runner := NewSchedule(newDummyRunnable(), Every(time.Second))
 
 	AssertRunnableRespectCancellation(t, runner, time.Second)
 	AssertRunnableRespectPreCancelledContext(t, runner)
@@ -153,7 +153,7 @@ func TestSchedule_ExecutionCount(t *testing.T) {
 		ctx, cancel := context.WithCancel(context.Background())
 		errChan := make(chan error)
 
-		go func() { errChan <- Schedule(worker, Every(10*time.Second)).Run(ctx) }()
+		go func() { errChan <- NewSchedule(worker, Every(10*time.Second)).Run(ctx) }()
 
 		// First tick at 10s
 		time.Sleep(10 * time.Second)
@@ -188,7 +188,7 @@ func TestSchedule_SlowRunnable(t *testing.T) {
 		ctx, cancel := context.WithCancel(context.Background())
 		errChan := make(chan error)
 
-		go func() { errChan <- Schedule(worker, Every(10*time.Second)).Run(ctx) }()
+		go func() { errChan <- NewSchedule(worker, Every(10*time.Second)).Run(ctx) }()
 
 		// First execution at 10s, finishes at 18s. Next at max(10+10=20, 18)=20s.
 		time.Sleep(18 * time.Second)
@@ -219,7 +219,7 @@ func TestSchedule_MultipleSpecs_Integration(t *testing.T) {
 
 		// Every 30min and HourlyAt(15) — should fire at whichever comes first.
 		go func() {
-			errChan <- Schedule(worker, Every(30*time.Minute), HourlyAt(15)).Run(ctx)
+			errChan <- NewSchedule(worker, Every(30*time.Minute), HourlyAt(15)).Run(ctx)
 		}()
 
 		// HourlyAt(15) fires 15min into the hour, Every(30min) fires at 30min.
@@ -242,7 +242,7 @@ func TestSchedule_ErrorStopsLoop(t *testing.T) {
 
 		errChan := make(chan error)
 		go func() {
-			errChan <- Schedule(worker, Every(time.Second)).Run(context.Background())
+			errChan <- NewSchedule(worker, Every(time.Second)).Run(context.Background())
 		}()
 
 		time.Sleep(time.Second)

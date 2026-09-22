@@ -26,5 +26,5 @@ func main() {
 		Handler: http.HandlerFunc(handlerFunc),
 	}
 
-	runnable.Run(runnable.HTTPServer(server))
+	runnable.Run(runnable.NewHTTPServer(server))
 }

@@ -27,7 +27,7 @@ When shutdown is triggered (context cancelled or any runnable completes), proces
 func main() {
     m := runnable.NewManager()
     m.RegisterService(jobQueue)
-    m.RegisterProcess(runnable.HTTPServer(server))
+    m.RegisterProcess(runnable.NewHTTPServer(server))
     m.RegisterProcess(monitor)
 
     runnable.Run(m)
@@ -46,7 +46,7 @@ It maps to a platform grace period such as Kubernetes `terminationGracePeriodSec
 m := runnable.NewManager().ShutdownTimeout(25 * time.Second)
 ```
 
-For nested managers, the inner budget must be smaller than the outer one. `HTTPServer` drains for 5s by default, which must stay below the process phase of the budget.
+For nested managers, the inner budget must be smaller than the outer one. `NewHTTPServer` drains for 5s by default, which must stay below the process phase of the budget.
 
 ### Names
 
@@ -92,9 +92,9 @@ Wrappers compose behavior around a `Runnable`:
 
 | Wrapper | Description |
 |---------|-------------|
-| `HTTPServer(server)` | Start and gracefully shut down a `*http.Server` |
-| `Restart(r)` | Auto-restart on exit and on failure, with configurable limits and backoff |
-| `Schedule(r, specs...)` | Run on a schedule: intervals, hourly, daily, cron, or custom |
+| `NewHTTPServer(server)` | Start and gracefully shut down a `*http.Server` |
+| `NewRestart(r)` | Auto-restart on exit and on failure, with configurable limits and backoff |
+| `NewSchedule(r, specs...)` | Run on a schedule: intervals, hourly, daily, cron, or custom |
 | `Recover(r)` | Catch panics and return them as errors |
 | `Signal(r, signals...)` | Cancel context on OS signals |
 | `Closer(c)` | Call `Close()` on context cancellation, also `CloserErr`, `CloserCtx`, `CloserCtxErr` |

@@ -10,41 +10,41 @@ import (
 // for execution time. Clock-aligned specs like [DailyAt] use now.
 type ScheduleSpec func(lastStart, now time.Time) time.Time
 
-// Schedule returns a runnable that runs the given runnable according to the
-// provided schedule specs. When multiple specs are provided, the runnable
-// runs at whichever fires next.
+// NewSchedule returns a [Schedule] running the given runnable according to the
+// specs. When multiple specs are provided, the runnable runs at whichever fires
+// next.
 //
-// If an execution outlasts the interval, missed ticks are skipped (not queued).
-// On error from the inner runnable, Schedule stops and returns the error.
-// On context cancellation, returns [context.Canceled].
-//
-// For example:
-//
-//	runnable.Schedule(cleanup, runnable.DailyAt(3, 0), runnable.Every(6*time.Hour))
+//	runnable.NewSchedule(cleanup, runnable.DailyAt(3, 0), runnable.Every(6*time.Hour))
 //
 // For custom scheduling logic, pass a [ScheduleSpec] function directly, or
 // adapt any type with a Next method using [Cron]. For example, to use
 // github.com/robfig/cron/v3:
 //
 //	sched, _ := cron.ParseStandard("15 */6 * * *") // every 6h at :15
-//	Schedule(worker, Cron(sched))
-func Schedule(runnable Runnable, specs ...ScheduleSpec) *schedule {
-	return &schedule{
+//	runnable.NewSchedule(worker, runnable.Cron(sched))
+func NewSchedule(runnable Runnable, specs ...ScheduleSpec) *Schedule {
+	return &Schedule{
 		name:     "schedule/" + runnableName(runnable),
 		runnable: runnable,
 		specs:    specs,
 	}
 }
 
-type schedule struct {
+// Schedule is a runnable that runs a runnable on a schedule. Build it with
+// [NewSchedule].
+//
+// If an execution outlasts the interval, missed ticks are skipped (not queued).
+// On error from the inner runnable, Run stops and returns the error. On context
+// cancellation, Run returns [context.Canceled].
+type Schedule struct {
 	name     string
 	runnable Runnable
 	specs    []ScheduleSpec
 }
 
-func (s *schedule) runnableName() string { return s.name }
+func (s *Schedule) runnableName() string { return s.name }
 
-func (s *schedule) Run(ctx context.Context) error {
+func (s *Schedule) Run(ctx context.Context) error {
 	lastStart := time.Now()
 
 	for {
@@ -63,7 +63,7 @@ func (s *schedule) Run(ctx context.Context) error {
 }
 
 // nextTime returns the earliest next execution time across all specs.
-func (s *schedule) nextTime(lastStart, now time.Time) time.Time {
+func (s *Schedule) nextTime(lastStart, now time.Time) time.Time {
 	earliest := s.specs[0](lastStart, now)
 	for _, spec := range s.specs[1:] {
 		if t := spec(lastStart, now); t.Before(earliest) {

@@ -27,11 +27,11 @@ func Test_runnableName(t *testing.T) {
 	)
 
 	require.Equal(t, "restart/dummyRunnable",
-		runnableName(Restart(newDummyRunnable())),
+		runnableName(NewRestart(newDummyRunnable())),
 	)
 
 	require.Equal(t, "schedule/dummyRunnable",
-		runnableName(Schedule(newDummyRunnable(), Every(0))),
+		runnableName(NewSchedule(newDummyRunnable(), Every(0))),
 	)
 
 	require.Equal(t, "recover/dummyRunnable",
@@ -39,16 +39,16 @@ func Test_runnableName(t *testing.T) {
 	)
 
 	require.Equal(t, "restart/closer/dummyCloser",
-		runnableName(Restart(CloserErr(&dummyCloser{}))),
+		runnableName(NewRestart(CloserErr(&dummyCloser{}))),
 	)
 
 	require.Equal(t, "restart/recover/closer/dummyCloser",
-		runnableName(Restart(Recover(CloserErr(&dummyCloser{})))),
+		runnableName(NewRestart(Recover(CloserErr(&dummyCloser{})))),
 	)
 }
 
 // nameRecorder returns a runnable that records the name from its context and returns nil.
-func nameRecorder(got *string) *funcRunnable {
+func nameRecorder(got *string) Runnable {
 	return Func(func(ctx context.Context) error {
 		*got = NameFromContext(ctx)
 		return nil
@@ -108,7 +108,7 @@ level=INFO msg="manager: shutdown complete"
 
 		server := &http.Server{Addr: "127.0.0.1:0", Handler: http.NotFoundHandler()}
 		m := NewManager()
-		m.RegisterProcess(Named(HTTPServer(server), "api"))
+		m.RegisterProcess(Named(NewHTTPServer(server), "api"))
 
 		require.NoError(t, m.Run(cancelledContext()))
 		require.Contains(t, logs.String(), `msg="manager/api: listening" addr=127.0.0.1:0`)
@@ -140,7 +140,7 @@ func TestNameFromContext(t *testing.T) {
 
 			var got string
 			m := NewManager()
-			m.RegisterProcess(Restart(Named(nameRecorder(&got), "job")).Limit(1))
+			m.RegisterProcess(NewRestart(Named(nameRecorder(&got), "job")).Limit(1))
 
 			require.NoError(t, m.Run(context.Background()))
 			require.Equal(t, "manager/restart/job", got)

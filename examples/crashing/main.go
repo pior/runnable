@@ -17,5 +17,5 @@ func (s *crashing) Run(ctx context.Context) error {
 }
 
 func main() {
-	runnable.Run(runnable.Restart(&crashing{}).ErrorLimit(5))
+	runnable.Run(runnable.NewRestart(&crashing{}).ErrorLimit(5))
 }

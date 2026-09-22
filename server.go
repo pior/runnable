@@ -9,30 +9,27 @@ import (
 	"time"
 )
 
-type httpServer struct {
+// HTTPServer is a runnable that runs a [*http.Server]. Build it with [NewHTTPServer].
+//
+// On context cancellation, it calls [http.Server.Shutdown] to gracefully drain
+// in-flight requests before returning, for at most [HTTPServer.ShutdownTimeout].
+type HTTPServer struct {
 	name            string
 	server          *http.Server
 	listener        net.Listener
 	shutdownTimeout time.Duration
 }
 
-var _ Runnable = (*httpServer)(nil)
+var _ Runnable = (*HTTPServer)(nil)
 
-func (r *httpServer) runnableName() string { return r.name }
+func (r *HTTPServer) runnableName() string { return r.name }
 
-// HTTPServer returns a runnable that runs a [*http.Server].
+// NewHTTPServer returns an [HTTPServer] running server, listening on
+// [http.Server.Addr] unless [HTTPServer.Listener] is set.
 //
-// On context cancellation, it calls [http.Server.Shutdown] to gracefully drain
-// in-flight requests before returning. Options are set with chained methods:
-//   - ShutdownTimeout(d): time allowed for the drain, 5 seconds by default.
-//     Under a [Manager], keep it below the process phase of the shutdown budget.
-//   - Listener(ln): accept connections on ln instead of [http.Server.Addr].
-//
-// For example:
-//
-//	runnable.HTTPServer(server).ShutdownTimeout(10 * time.Second)
-func HTTPServer(server *http.Server) *httpServer {
-	return &httpServer{
+//	runnable.NewHTTPServer(server).ShutdownTimeout(10 * time.Second)
+func NewHTTPServer(server *http.Server) *HTTPServer {
+	return &HTTPServer{
 		name:            "httpserver",
 		server:          server,
 		shutdownTimeout: 5 * time.Second,
@@ -40,8 +37,9 @@ func HTTPServer(server *http.Server) *httpServer {
 }
 
 // ShutdownTimeout sets the maximum time allowed for graceful shutdown.
-// Defaults to 5 seconds.
-func (r *httpServer) ShutdownTimeout(dur time.Duration) *httpServer {
+// Defaults to 5 seconds. Under a [Manager], keep it below the process phase of
+// the manager's shutdown budget.
+func (r *HTTPServer) ShutdownTimeout(dur time.Duration) *HTTPServer {
 	r.shutdownTimeout = dur
 	return r
 }
@@ -50,12 +48,12 @@ func (r *httpServer) ShutdownTimeout(dur time.Duration) *httpServer {
 // [http.Server.Addr]. Use it to listen on port 0 in tests, on a unix socket, on a
 // TLS listener, or on a socket passed by the service manager (socket activation).
 // The server takes ownership of ln and closes it on shutdown.
-func (r *httpServer) Listener(ln net.Listener) *httpServer {
+func (r *HTTPServer) Listener(ln net.Listener) *HTTPServer {
 	r.listener = ln
 	return r
 }
 
-func (r *httpServer) Run(ctx context.Context) error {
+func (r *HTTPServer) Run(ctx context.Context) error {
 	name := resolveName(ctx, r.name)
 	errChan := make(chan error)
 
@@ -95,7 +93,7 @@ func (r *httpServer) Run(ctx context.Context) error {
 	return nil
 }
 
-func (r *httpServer) shutdown() error {
+func (r *HTTPServer) shutdown() error {
 	ctx := context.Background() // only used for timeout in Shutdown.
 	ctx, cancel := context.WithTimeout(ctx, r.shutdownTimeout)
 	defer cancel()
