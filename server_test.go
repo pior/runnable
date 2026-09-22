@@ -90,9 +90,9 @@ func TestHTTPServer(t *testing.T) {
 			Handler: http.NotFoundHandler(),
 		}
 
-		r := HTTPServer(server).Name("api")
+		r := Named(HTTPServer(server), "api")
 
-		require.Equal(t, "api", r.runnableName())
+		require.Equal(t, "api", runnableName(r))
 	})
 
 	t.Run("shutdown timeout is configurable", func(t *testing.T) {

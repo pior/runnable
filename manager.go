@@ -29,29 +29,18 @@ import (
 //
 // Registering the same runnable twice, or as both a process and a service, panics.
 type Manager struct {
-	name            string
 	processes       []entry
 	services        []entry
 	shutdownTimeout time.Duration
 }
 
-// NewManager returns a new [Manager].
+// NewManager returns a new [Manager]. Its name, used as a prefix in log messages
+// and errors, is "manager" unless a parent [Manager] or [Named] assigns one.
 func NewManager() *Manager {
-	return &Manager{
-		name:            "manager",
-		shutdownTimeout: 10 * time.Second,
-	}
+	return &Manager{shutdownTimeout: 10 * time.Second}
 }
 
-func (m *Manager) runnableName() string { return m.name }
-
-// Name sets the manager's name, used as a prefix in log messages and errors.
-// It is a fallback, used when no parent assigns a name: a parent [Manager] or
-// [Named] replaces it with the full name, such as "manager/inner".
-func (m *Manager) Name(name string) *Manager {
-	m.name = name
-	return m
-}
+func (m *Manager) runnableName() string { return "manager" }
 
 // ShutdownTimeout sets the total time for both shutdown phases. Processes get
 // half of it, services get the rest: at least half, more when processes stop
@@ -143,7 +132,7 @@ type completed struct {
 
 func (m *Manager) Run(ctx context.Context) error {
 	parent := nameFromContext(ctx)
-	prefix := resolveName(ctx, m.name)
+	prefix := resolveName(ctx, m.runnableName())
 	childName := func(e entry) string { return prefix + "/" + e.name }
 
 	svcCtx, svcCancel := context.WithCancel(context.WithoutCancel(ctx))

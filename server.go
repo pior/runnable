@@ -32,13 +32,6 @@ func HTTPServer(server *http.Server) *httpServer {
 	}
 }
 
-// Name sets the fallback name used in log messages when no parent assigns one.
-// Defaults to "httpserver".
-func (r *httpServer) Name(name string) *httpServer {
-	r.name = name
-	return r
-}
-
 // ShutdownTimeout sets the maximum time allowed for graceful shutdown.
 // Defaults to 5 seconds.
 func (r *httpServer) ShutdownTimeout(dur time.Duration) *httpServer {

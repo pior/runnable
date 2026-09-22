@@ -19,7 +19,7 @@ func Test_runnableName(t *testing.T) {
 	)
 
 	require.Equal(t, "custom-name",
-		runnableName(Func(funcTesting).Name("custom-name")),
+		runnableName(Named(Func(funcTesting), "custom-name")),
 	)
 
 	require.Equal(t, "dummyRunnable",
@@ -140,7 +140,7 @@ func TestNameFromContext(t *testing.T) {
 
 			var got string
 			m := NewManager()
-			m.RegisterProcess(Restart(nameRecorder(&got).Name("job")).Limit(1))
+			m.RegisterProcess(Restart(Named(nameRecorder(&got), "job")).Limit(1))
 
 			require.NoError(t, m.Run(context.Background()))
 			require.Equal(t, "manager/restart/job", got)
@@ -153,11 +153,11 @@ func TestNameFromContext(t *testing.T) {
 			logs := captureLogs(t)
 
 			var got string
-			inner := NewManager().Name("inner")
-			inner.RegisterProcess(nameRecorder(&got).Name("x"))
+			inner := NewManager()
+			inner.RegisterProcess(Named(nameRecorder(&got), "x"))
 
 			outer := NewManager()
-			outer.RegisterProcess(inner)
+			outer.RegisterProcess(Named(inner, "inner"))
 
 			require.NoError(t, outer.Run(context.Background()))
 			require.Equal(t, "manager/inner/x", got)

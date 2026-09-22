@@ -41,13 +41,6 @@ type schedule struct {
 
 func (s *schedule) runnableName() string { return s.name }
 
-// Name sets the fallback name used when no parent assigns one.
-// Defaults to "schedule/<inner>".
-func (s *schedule) Name(name string) *schedule {
-	s.name = name
-	return s
-}
-
 func (s *schedule) Run(ctx context.Context) error {
 	lastStart := time.Now()
 
