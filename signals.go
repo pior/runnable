@@ -30,6 +30,7 @@ type signal struct {
 func (s *signal) runnableName() string { return s.name }
 
 func (s *signal) Run(ctx context.Context) error {
+	name := resolveName(ctx, s.name)
 	ctx, cancelFunc := context.WithCancel(ctx)
 
 	sigChan := make(chan os.Signal, 1)
@@ -39,7 +40,7 @@ func (s *signal) Run(ctx context.Context) error {
 		defer ossignal.Reset(s.signals...)
 
 		sig := <-sigChan
-		logger.Info(s.name+": received signal", "signal", sig)
+		logger.Info(name+": received signal", "signal", sig)
 		cancelFunc()
 	}()
 

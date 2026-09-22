@@ -32,7 +32,8 @@ func HTTPServer(server *http.Server) *httpServer {
 	}
 }
 
-// Name sets the runnable name, used in log messages. Defaults to "httpserver".
+// Name sets the fallback name used in log messages when no parent assigns one.
+// Defaults to "httpserver".
 func (r *httpServer) Name(name string) *httpServer {
 	r.name = name
 	return r
@@ -46,10 +47,11 @@ func (r *httpServer) ShutdownTimeout(dur time.Duration) *httpServer {
 }
 
 func (r *httpServer) Run(ctx context.Context) error {
+	name := resolveName(ctx, r.name)
 	errChan := make(chan error)
 
 	go func() {
-		logger.Info(r.name+": listening", "addr", r.server.Addr)
+		logger.Info(name+": listening", "addr", r.server.Addr)
 		errChan <- r.server.ListenAndServe()
 	}()
 
@@ -58,12 +60,12 @@ func (r *httpServer) Run(ctx context.Context) error {
 
 	select {
 	case <-ctx.Done():
-		logger.Info(r.name + ": shutting down")
+		logger.Info(name + ": shutting down")
 		shutdownErr = r.shutdown()
 		err = <-errChan
-		logger.Info(r.name + ": stopped")
+		logger.Info(name + ": stopped")
 	case err = <-errChan:
-		logger.Info(r.name+": stopped with error", "error", err)
+		logger.Info(name+": stopped with error", "error", err)
 		// Server stopped on its own — no Shutdown needed.
 	}
 

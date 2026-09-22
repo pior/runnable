@@ -22,7 +22,7 @@ func Func(fn RunnableFunc) *funcRunnable {
 	return &funcRunnable{name, fn}
 }
 
-// Name sets the runnable name, used in log messages.
+// Name sets the fallback name used when no parent assigns one.
 // Defaults to the function name derived via reflection.
 func (f *funcRunnable) Name(name string) *funcRunnable {
 	f.name = name

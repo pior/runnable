@@ -365,7 +365,7 @@ func TestManager_ErrorChain(t *testing.T) {
 			outer.RegisterProcess(inner)
 
 			err := outer.Run(context.Background())
-			require.EqualError(t, err, "outer: inner: inner: panickingRunnable: runnable panicked: boom")
+			require.EqualError(t, err, "outer: inner: panickingRunnable: runnable panicked: boom")
 
 			var panicErr *PanicError
 			require.ErrorAs(t, err, &panicErr)

@@ -41,7 +41,8 @@ type schedule struct {
 
 func (s *schedule) runnableName() string { return s.name }
 
-// Name sets the runnable name, used in log messages. Defaults to "schedule/<inner>".
+// Name sets the fallback name used when no parent assigns one.
+// Defaults to "schedule/<inner>".
 func (s *schedule) Name(name string) *schedule {
 	s.name = name
 	return s

@@ -1,10 +1,12 @@
 package runnable
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"log/slog"
 	"os"
+	"sync"
 	"testing"
 	"time"
 
@@ -145,4 +147,42 @@ func initializeForExample() (context.Context, func()) {
 	})))
 
 	return ctx, cancel
+}
+
+// logBuffer is a concurrency-safe buffer for capturing log output.
+type logBuffer struct {
+	mu  sync.Mutex
+	buf bytes.Buffer
+}
+
+func (b *logBuffer) Write(p []byte) (int, error) {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	return b.buf.Write(p)
+}
+
+func (b *logBuffer) String() string {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	return b.buf.String()
+}
+
+// captureLogs redirects the package logger to a buffer, without timestamps,
+// until the end of the test.
+func captureLogs(t *testing.T) *logBuffer {
+	t.Helper()
+
+	previous := logger
+	t.Cleanup(func() { SetLogger(previous) })
+
+	buf := &logBuffer{}
+	SetLogger(slog.New(slog.NewTextHandler(buf, &slog.HandlerOptions{
+		ReplaceAttr: func(_ []string, a slog.Attr) slog.Attr {
+			if a.Key == slog.TimeKey {
+				return slog.Attr{}
+			}
+			return a
+		},
+	})))
+	return buf
 }
