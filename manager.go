@@ -23,29 +23,24 @@ import (
 // expires is reported with [ErrShutdownTimeout]. A manager is itself a [Runnable],
 // so managers can be nested for independent shutdown ordering.
 //
+// Each runnable runs with its full name in the context, such as "manager/JobQueue",
+// see [NameFromContext]. A nested manager uses its assigned name as prefix, and
+// leaves the error prefix to its parent.
+//
 // Registering the same runnable twice, or as both a process and a service, panics.
 type Manager struct {
-	name            string
 	processes       []entry
 	services        []entry
 	shutdownTimeout time.Duration
 }
 
-// NewManager returns a new [Manager].
+// NewManager returns a new [Manager]. Its name, used as a prefix in log messages
+// and errors, is "manager" unless a parent [Manager] or [Named] assigns one.
 func NewManager() *Manager {
-	return &Manager{
-		name:            "manager",
-		shutdownTimeout: 10 * time.Second,
-	}
+	return &Manager{shutdownTimeout: 10 * time.Second}
 }
 
-func (m *Manager) runnableName() string { return m.name }
-
-// Name sets the manager's name, used as a prefix in log messages.
-func (m *Manager) Name(name string) *Manager {
-	m.name = name
-	return m
-}
+func (m *Manager) runnableName() string { return "manager" }
 
 // ShutdownTimeout sets the total time for both shutdown phases. Processes get
 // half of it, services get the rest: at least half, more when processes stop
@@ -136,7 +131,9 @@ type completed struct {
 }
 
 func (m *Manager) Run(ctx context.Context) error {
-	prefix := m.runnableName()
+	parent := nameFromContext(ctx)
+	prefix := resolveName(ctx, m.runnableName())
+	childName := func(e entry) string { return prefix + "/" + e.name }
 
 	svcCtx, svcCancel := context.WithCancel(context.WithoutCancel(ctx))
 	defer svcCancel()
@@ -156,16 +153,16 @@ func (m *Manager) Run(ctx context.Context) error {
 
 	for i, svc := range m.services {
 		go func() {
-			svcDone <- completed{i, Recover(svc.runnable).Run(svcCtx)}
+			svcDone <- completed{i, Recover(svc.runnable).Run(withManagerName(svcCtx, childName(svc)))}
 		}()
-		logger.Info(prefix + "/" + svc.name + ": started")
+		logger.Info(childName(svc) + ": started")
 	}
 
 	for i, proc := range m.processes {
 		go func() {
-			procDone <- completed{i, Recover(proc.runnable).Run(procCtx)}
+			procDone <- completed{i, Recover(proc.runnable).Run(withManagerName(procCtx, childName(proc)))}
 		}()
-		logger.Info(prefix + "/" + proc.name + ": started")
+		logger.Info(childName(proc) + ": started")
 	}
 
 	var errs []error
@@ -175,12 +172,12 @@ func (m *Manager) Run(ctx context.Context) error {
 	case <-ctx.Done():
 		logger.Info(prefix+": starting shutdown", "reason", "context cancelled")
 	case c := <-procDone:
-		e := m.markStopped(m.processes, c)
-		m.collectError(&errs, e, c.err)
+		e := markStopped(prefix, m.processes, c)
+		collectError(&errs, e, c.err)
 		logger.Info(prefix+": starting shutdown", "reason", e.name+" died")
 	case c := <-svcDone:
-		e := m.markStopped(m.services, c)
-		m.collectError(&errs, e, c.err)
+		e := markStopped(prefix, m.services, c)
+		collectError(&errs, e, c.err)
 		logger.Info(prefix+": starting shutdown", "reason", e.name+" died")
 	}
 
@@ -192,30 +189,35 @@ func (m *Manager) Run(ctx context.Context) error {
 
 	// Phase 1: stop processes
 	procCancel()
-	m.waitPhase(m.processes, procDone, procDeadline.Done(), &errs)
+	waitPhase(prefix, m.processes, procDone, procDeadline.Done(), &errs)
 
 	// Phase 2: stop services
 	svcCancel()
-	m.waitPhase(m.services, svcDone, deadline.Done(), &errs)
+	waitPhase(prefix, m.services, svcDone, deadline.Done(), &errs)
 
 	logger.Info(prefix + ": shutdown complete")
 
-	if len(errs) > 0 {
-		return fmt.Errorf("%s: %w", prefix, errors.Join(errs...))
+	if len(errs) == 0 {
+		return nil
 	}
-	return nil
+	// A parent manager already wraps this error with our name.
+	if parent.fromManager {
+		return errors.Join(errs...)
+	}
+	return fmt.Errorf("%s: %w", prefix, errors.Join(errs...))
 }
 
 // markStopped records the completion c in entries and logs it.
-func (m *Manager) markStopped(entries []entry, c completed) entry {
+func markStopped(prefix string, entries []entry, c completed) entry {
 	entries[c.index].stopped = true
 	e := entries[c.index]
-	m.logCompleted(e, c.err)
+	logCompleted(prefix+"/"+e.name, c.err)
 	return e
 }
 
 // waitPhase waits for all running entries to complete, or for the deadline.
-func (m *Manager) waitPhase(
+func waitPhase(
+	prefix string,
 	entries []entry,
 	done <-chan completed,
 	deadline <-chan struct{},
@@ -225,12 +227,12 @@ func (m *Manager) waitPhase(
 	for slices.ContainsFunc(entries, running) {
 		select {
 		case c := <-done:
-			e := m.markStopped(entries, c)
-			m.collectError(errs, e, c.err)
+			e := markStopped(prefix, entries, c)
+			collectError(errs, e, c.err)
 		case <-deadline:
 			for _, e := range entries {
 				if running(e) {
-					logger.Info(m.runnableName() + "/" + e.name + ": still running")
+					logger.Info(prefix + "/" + e.name + ": still running")
 					*errs = append(*errs, fmt.Errorf("%s: %w", e.name, ErrShutdownTimeout))
 				}
 			}
@@ -239,8 +241,7 @@ func (m *Manager) waitPhase(
 	}
 }
 
-func (m *Manager) logCompleted(e entry, err error) {
-	name := m.runnableName() + "/" + e.name
+func logCompleted(name string, err error) {
 	var pe *PanicError
 	switch {
 	case err == nil || errors.Is(err, context.Canceled):
@@ -252,7 +253,7 @@ func (m *Manager) logCompleted(e entry, err error) {
 	}
 }
 
-func (m *Manager) collectError(errs *[]error, e entry, err error) {
+func collectError(errs *[]error, e entry, err error) {
 	if err != nil && !errors.Is(err, context.Canceled) {
 		*errs = append(*errs, fmt.Errorf("%s: %w", e.name, err))
 	}

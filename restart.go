@@ -82,11 +82,12 @@ func (r *restart) ErrorResetAfter(d time.Duration) *restart {
 }
 
 func (r *restart) Run(ctx context.Context) error {
+	name := resolveName(ctx, r.name)
 	restartCount := 0
 	errorCount := 0
 
 	for {
-		logger.Info(r.name+": starting", "restart", restartCount, "errors", errorCount)
+		logger.Info(name+": starting", "restart", restartCount, "errors", errorCount)
 
 		startTime := time.Now()
 		err := r.runnable.Run(ctx)
@@ -102,14 +103,14 @@ func (r *restart) Run(ctx context.Context) error {
 			errorCount++
 
 			if r.errorLimit > 0 && errorCount >= r.errorLimit {
-				logger.Info(r.name+": not restarting", "reason", "error limit", "limit", r.errorLimit)
+				logger.Info(name+": not restarting", "reason", "error limit", "limit", r.errorLimit)
 				return err
 			}
 		} else {
 			errorCount = 0
 
 			if r.limit > 0 && restartCount >= r.limit {
-				logger.Info(r.name+": not restarting", "reason", "restart limit", "limit", r.limit)
+				logger.Info(name+": not restarting", "reason", "restart limit", "limit", r.limit)
 				return nil
 			}
 		}

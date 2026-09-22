@@ -61,10 +61,10 @@ func Example() {
 	m := runnable.NewManager()
 	m.RegisterService(jobs)
 	m.RegisterProcess(runnable.Schedule(cleanup, runnable.Every(500*time.Millisecond)))
-	m.RegisterProcess(runnable.Func(func(_ context.Context) error {
+	m.RegisterProcess(runnable.Named(runnable.Func(func(_ context.Context) error {
 		<-done
 		return nil
-	}).Name("app"))
+	}), "app"))
 
 	runnable.Run(m)
 

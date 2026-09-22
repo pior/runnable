@@ -41,18 +41,20 @@ A `Manager` is itself a `Runnable`, so managers can be nested for independent sh
 
 ```
 $ go run ./examples/example/
-level=INFO msg=started runnable=manager/StupidJobQueue
-level=INFO msg=started runnable=manager/httpserver
-level=INFO msg=listening runnable=httpserver addr=localhost:8000
+INFO manager/StupidJobQueue: started
+INFO manager/httpserver: started
+INFO manager/schedule/main.main.func2: started
+INFO manager/httpserver: listening addr=localhost:8000
 ...
 ^C
-level=INFO msg="received signal" runnable=signal/manager signal=interrupt
-level=INFO msg="starting shutdown" runnable=manager reason="context cancelled"
-level=INFO msg="shutting down" runnable=httpserver
-level=INFO msg=stopped runnable=httpserver
-level=INFO msg=stopped runnable=manager/httpserver
-level=INFO msg=stopped runnable=manager/StupidJobQueue
-level=INFO msg="shutdown complete" runnable=manager
+INFO signal/manager: received signal signal=interrupt
+INFO manager: starting shutdown reason="context cancelled"
+INFO manager/httpserver: shutting down
+INFO manager/schedule/main.main.func2: stopped
+INFO manager/httpserver: stopped
+INFO manager/httpserver: stopped
+INFO manager/StupidJobQueue: stopped
+INFO manager: shutdown complete
 ```
 
 </details>
@@ -80,6 +82,7 @@ Wrappers compose behavior around a `Runnable`:
 | `Signal(r, signals...)` | Cancel context on OS signals |
 | `Closer(c)` | Call `Close()` on context cancellation |
 | `Func(fn)` | Adapt a `func(context.Context) error` to `Runnable` |
+| `Named(r, name)` | Give a runnable a name, readable with `NameFromContext` |
 
 ## License
 

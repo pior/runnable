@@ -22,13 +22,6 @@ func Func(fn RunnableFunc) *funcRunnable {
 	return &funcRunnable{name, fn}
 }
 
-// Name sets the runnable name, used in log messages.
-// Defaults to the function name derived via reflection.
-func (f *funcRunnable) Name(name string) *funcRunnable {
-	f.name = name
-	return f
-}
-
 func (f *funcRunnable) Run(ctx context.Context) error {
 	return f.fn(ctx)
 }
