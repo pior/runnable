@@ -48,7 +48,7 @@ func Test_runnableName(t *testing.T) {
 }
 
 // nameRecorder returns a runnable that records the name from its context and returns nil.
-func nameRecorder(got *string) *funcRunnable {
+func nameRecorder(got *string) Runnable {
 	return Func(func(ctx context.Context) error {
 		*got = NameFromContext(ctx)
 		return nil

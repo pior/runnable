@@ -5,35 +5,31 @@ import (
 	"time"
 )
 
-// Restart returns a runnable that keeps running the given runnable, restarting it
-// after both successful exits and errors. Panics are recovered and treated as errors.
-//
-// The error count tracks consecutive errors and resets to zero after any successful
-// run. Restart loops indefinitely unless limited. When the restart limit is reached,
-// Restart returns nil. When the error limit is reached, Restart returns the last
-// error. Context cancellation stops the loop and returns [context.Canceled].
-//
-// Options are set with chained methods:
-//   - Delay(d): wait before restarting after a successful exit, immediate by default.
-//   - ErrorBackoff(fn): delay before restarting after an error, from the consecutive
-//     error count. By default immediate for the first 3 errors, 10s up to 10, then 1m.
-//   - ErrorResetAfter(d): also reset the error count when a run lasted at least d
-//     before failing, so long-running services do not accumulate stale errors.
-//   - Limit(n): maximum restarts after successful exits, unlimited by default.
-//   - ErrorLimit(n): maximum consecutive restarts after errors, unlimited by default.
-//
-// For example:
+// Restart returns a [Restarter] running the given runnable.
 //
 //	runnable.Restart(worker).ErrorLimit(5).ErrorResetAfter(time.Minute)
-func Restart(runnable Runnable) *restart {
-	return &restart{
+func Restart(runnable Runnable) *Restarter {
+	return &Restarter{
 		name:           "restart/" + runnableName(runnable),
 		runnable:       Recover(runnable),
 		errorBackoffFn: defaultErrorBackoff,
 	}
 }
 
-type restart struct {
+// Restarter is a runnable that keeps running a runnable, restarting it after both
+// successful exits and errors. Build it with [Restart]. Panics are recovered
+// and treated as errors.
+//
+// On successful exit, the runnable is restarted after [Restarter.Delay]. On error,
+// it is restarted after the backoff of [Restarter.ErrorBackoff]. The error count
+// tracks consecutive errors and resets to zero after any successful run, or after
+// a long enough run with [Restarter.ErrorResetAfter].
+//
+// It loops indefinitely unless limited by [Restarter.Limit] or [Restarter.ErrorLimit].
+// When the restart limit is reached, Run returns nil. When the error limit is
+// reached, Run returns the last error. Context cancellation stops the loop and
+// returns [context.Canceled].
+type Restarter struct {
 	name            string
 	runnable        Runnable
 	limit           int
@@ -43,27 +39,27 @@ type restart struct {
 	errorResetAfter time.Duration
 }
 
-var _ Runnable = (*restart)(nil)
+var _ Runnable = (*Restarter)(nil)
 
-func (r *restart) runnableName() string { return r.name }
+func (r *Restarter) runnableName() string { return r.name }
 
 // Limit sets the maximum number of restarts after successful (nil) exits.
 // When reached, returns nil. Zero means unlimited (the default).
-func (r *restart) Limit(n int) *restart {
+func (r *Restarter) Limit(n int) *Restarter {
 	r.limit = n
 	return r
 }
 
 // ErrorLimit sets the maximum number of consecutive restarts after errors.
 // When reached, returns the last error. Zero means unlimited (the default).
-func (r *restart) ErrorLimit(n int) *restart {
+func (r *Restarter) ErrorLimit(n int) *Restarter {
 	r.errorLimit = n
 	return r
 }
 
 // Delay sets the time to wait before restarting after a successful exit.
 // Defaults to zero (immediate restart).
-func (r *restart) Delay(d time.Duration) *restart {
+func (r *Restarter) Delay(d time.Duration) *Restarter {
 	r.delay = d
 	return r
 }
@@ -71,7 +67,7 @@ func (r *restart) Delay(d time.Duration) *restart {
 // ErrorBackoff sets the function that determines the delay before restarting
 // after an error. It receives the current consecutive error count (starting at 1).
 // The default backs off: immediate for the first 3 errors, 10s up to 10, then 1m.
-func (r *restart) ErrorBackoff(fn func(errors int) time.Duration) *restart {
+func (r *Restarter) ErrorBackoff(fn func(errors int) time.Duration) *Restarter {
 	r.errorBackoffFn = fn
 	return r
 }
@@ -81,12 +77,12 @@ func (r *restart) ErrorBackoff(fn func(errors int) time.Duration) *restart {
 // that occasionally fail from accumulating stale error counts into the backoff.
 // Zero means never reset based on duration (the default). Successful runs always
 // reset the error count regardless of this setting.
-func (r *restart) ErrorResetAfter(d time.Duration) *restart {
+func (r *Restarter) ErrorResetAfter(d time.Duration) *Restarter {
 	r.errorResetAfter = d
 	return r
 }
 
-func (r *restart) Run(ctx context.Context) error {
+func (r *Restarter) Run(ctx context.Context) error {
 	name := resolveName(ctx, r.name)
 	restartCount := 0
 	errorCount := 0
