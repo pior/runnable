@@ -40,15 +40,15 @@ func (r *mockRunnable) Run(ctx context.Context) error {
 
 func TestManager_EmptyManager(t *testing.T) {
 	synctest.Test(t, func(t *testing.T) {
-		err := Manager().Run(cancelledContext())
+		err := NewManager().Run(cancelledContext())
 		require.NoError(t, err)
 	})
 }
 
 func TestManager_Dying_Process(t *testing.T) {
 	synctest.Test(t, func(t *testing.T) {
-		m := Manager()
-		m.Register(newDyingRunnable())
+		m := NewManager()
+		m.RegisterProcess(newDyingRunnable())
 
 		err := m.Run(context.Background())
 		require.EqualError(t, err, "manager: dyingRunnable crashed with dying")
@@ -57,10 +57,10 @@ func TestManager_Dying_Process(t *testing.T) {
 
 func TestManager_Dying_Service(t *testing.T) {
 	synctest.Test(t, func(t *testing.T) {
-		m := Manager()
+		m := NewManager()
 
 		proc := newMockRunnable()
-		m.Register(proc)
+		m.RegisterProcess(proc)
 		m.RegisterService(newDyingRunnable())
 
 		errChan := make(chan error)
@@ -83,8 +83,8 @@ func TestManager_ShutdownTimeout(t *testing.T) {
 			return nil
 		}).Name("blockedRunnable")
 
-		m := Manager().ShutdownTimeout(time.Second)
-		m.Register(blocked)
+		m := NewManager().ShutdownTimeout(time.Second)
+		m.RegisterProcess(blocked)
 
 		err := m.Run(cancelledContext())
 		require.EqualError(t, err, "manager: blockedRunnable is still running")
@@ -95,12 +95,12 @@ func TestManager_ShutdownTimeout(t *testing.T) {
 
 func TestManager_ShutdownOrdering(t *testing.T) {
 	synctest.Test(t, func(t *testing.T) {
-		m := Manager()
+		m := NewManager()
 
 		proc := newMockRunnable()
 		svc := newMockRunnable()
 
-		m.Register(proc)
+		m.RegisterProcess(proc)
 		m.RegisterService(svc)
 
 		errChan := make(chan error)
@@ -133,11 +133,11 @@ func TestManager_Nested(t *testing.T) {
 		synctest.Test(t, func(t *testing.T) {
 			innerProc := newMockRunnable()
 
-			inner := Manager().Name("inner")
-			inner.Register(innerProc)
+			inner := NewManager().Name("inner")
+			inner.RegisterProcess(innerProc)
 
-			outer := Manager().Name("outer")
-			outer.Register(inner)
+			outer := NewManager().Name("outer")
+			outer.RegisterProcess(inner)
 
 			errChan := make(chan error)
 			ctx, cancel := context.WithCancel(context.Background())
@@ -160,12 +160,12 @@ func TestManager_Nested(t *testing.T) {
 			innerProc := newMockRunnable()
 			innerSvc := newMockRunnable()
 
-			inner := Manager().Name("inner")
-			inner.Register(innerProc)
+			inner := NewManager().Name("inner")
+			inner.RegisterProcess(innerProc)
 			inner.RegisterService(innerSvc)
 
-			outer := Manager().Name("outer")
-			outer.Register(inner)
+			outer := NewManager().Name("outer")
+			outer.RegisterProcess(inner)
 
 			errChan := make(chan error)
 			ctx, cancel := context.WithCancel(context.Background())
@@ -196,11 +196,11 @@ func TestManager_Nested(t *testing.T) {
 			innerSvc := newMockRunnable()
 			outerProc := newMockRunnable()
 
-			inner := Manager().Name("inner")
+			inner := NewManager().Name("inner")
 			inner.RegisterService(innerSvc)
 
-			outer := Manager().Name("outer")
-			outer.Register(outerProc)
+			outer := NewManager().Name("outer")
+			outer.RegisterProcess(outerProc)
 			outer.RegisterService(inner)
 
 			errChan := make(chan error)
@@ -227,17 +227,17 @@ func TestManager_Nested(t *testing.T) {
 
 func TestManager_DuplicateRegistration(t *testing.T) {
 	t.Run("process registered twice", func(t *testing.T) {
-		m := Manager()
+		m := NewManager()
 		r := newDummyRunnable()
-		m.Register(r)
+		m.RegisterProcess(r)
 
 		require.PanicsWithValue(t, "runnable dummyRunnable already registered", func() {
-			m.Register(r)
+			m.RegisterProcess(r)
 		})
 	})
 
 	t.Run("service registered twice", func(t *testing.T) {
-		m := Manager()
+		m := NewManager()
 		r := newDummyRunnable()
 		m.RegisterService(r)
 
@@ -247,9 +247,9 @@ func TestManager_DuplicateRegistration(t *testing.T) {
 	})
 
 	t.Run("registered as both process and service", func(t *testing.T) {
-		m := Manager()
+		m := NewManager()
 		r := newDummyRunnable()
-		m.Register(r)
+		m.RegisterProcess(r)
 
 		require.PanicsWithValue(t, "runnable dummyRunnable already registered", func() {
 			m.RegisterService(r)
@@ -257,12 +257,12 @@ func TestManager_DuplicateRegistration(t *testing.T) {
 	})
 
 	t.Run("registered as service then process", func(t *testing.T) {
-		m := Manager()
+		m := NewManager()
 		r := newDummyRunnable()
 		m.RegisterService(r)
 
 		require.PanicsWithValue(t, "runnable dummyRunnable already registered", func() {
-			m.Register(r)
+			m.RegisterProcess(r)
 		})
 	})
 }
@@ -280,8 +280,8 @@ func (r mapRunnable) Run(ctx context.Context) error {
 func TestManager_NonComparableRunnable(t *testing.T) {
 	t.Run("as process", func(t *testing.T) {
 		synctest.Test(t, func(t *testing.T) {
-			m := Manager()
-			m.Register(mapRunnable{}, mapRunnable{})
+			m := NewManager()
+			m.RegisterProcess(mapRunnable{}, mapRunnable{})
 
 			require.NoError(t, m.Run(cancelledContext()))
 		})
@@ -289,7 +289,7 @@ func TestManager_NonComparableRunnable(t *testing.T) {
 
 	t.Run("as service", func(t *testing.T) {
 		synctest.Test(t, func(t *testing.T) {
-			m := Manager()
+			m := NewManager()
 			m.RegisterService(mapRunnable{}, mapRunnable{})
 
 			require.NoError(t, m.Run(cancelledContext()))
@@ -298,8 +298,8 @@ func TestManager_NonComparableRunnable(t *testing.T) {
 
 	t.Run("mixed with comparable runnables", func(t *testing.T) {
 		synctest.Test(t, func(t *testing.T) {
-			m := Manager()
-			m.Register(newDummyRunnable(), mapRunnable{})
+			m := NewManager()
+			m.RegisterProcess(newDummyRunnable(), mapRunnable{})
 			m.RegisterService(mapRunnable{}, newCounterRunnable())
 
 			require.NoError(t, m.Run(cancelledContext()))
@@ -315,8 +315,8 @@ func TestManager_RunTwice(t *testing.T) {
 			return nil
 		}).Name("blockedRunnable")
 
-		m := Manager().ShutdownTimeout(time.Second)
-		m.Register(blocked)
+		m := NewManager().ShutdownTimeout(time.Second)
+		m.RegisterProcess(blocked)
 
 		close(unblock)
 		require.NoError(t, m.Run(cancelledContext()))

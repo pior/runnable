@@ -25,10 +25,10 @@ When shutdown is triggered (context cancelled or any runnable completes), proces
 
 ```go
 func main() {
-    m := runnable.Manager()
+    m := runnable.NewManager()
     m.RegisterService(jobQueue)
-    m.Register(runnable.HTTPServer(server))
-    m.Register(monitor)
+    m.RegisterProcess(runnable.HTTPServer(server))
+    m.RegisterProcess(monitor)
 
     runnable.Run(m)
 }
