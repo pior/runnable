@@ -18,13 +18,12 @@ type ScheduleSpec func(lastStart, now time.Time) time.Time
 // On error from the inner runnable, Schedule stops and returns the error.
 // On context cancellation, returns [context.Canceled].
 //
-// For custom scheduling logic, pass a [ScheduleSpec] function directly.
-// For example, to use github.com/robfig/cron/v3:
+// For custom scheduling logic, pass a [ScheduleSpec] function directly, or
+// adapt any type with a Next method using [Cron]. For example, to use
+// github.com/robfig/cron/v3:
 //
 //	sched, _ := cron.ParseStandard("15 */6 * * *") // every 6h at :15
-//	Schedule(worker, func(_, now time.Time) time.Time {
-//	    return sched.Next(now)
-//	})
+//	Schedule(worker, Cron(sched))
 func Schedule(runnable Runnable, specs ...ScheduleSpec) *schedule {
 	return &schedule{
 		name:     "schedule/" + runnableName(runnable),
@@ -107,5 +106,14 @@ func DailyAt(hour, minute int) ScheduleSpec {
 			next = next.AddDate(0, 0, 1)
 		}
 		return next
+	}
+}
+
+// Cron returns a schedule spec that delegates to s.Next(now). It adapts any
+// schedule exposing a Next method, such as github.com/robfig/cron/v3's
+// cron.Schedule, without depending on it.
+func Cron(s interface{ Next(time.Time) time.Time }) ScheduleSpec {
+	return func(_, now time.Time) time.Time {
+		return s.Next(now)
 	}
 }

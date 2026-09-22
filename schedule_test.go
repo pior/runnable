@@ -2,6 +2,7 @@ package runnable
 
 import (
 	"context"
+	"fmt"
 	"sync/atomic"
 	"testing"
 	"testing/synctest"
@@ -86,6 +87,40 @@ func TestScheduleSpec_Hourly(t *testing.T) {
 	want := time.Date(2025, 1, 1, 15, 0, 0, 0, time.UTC)
 
 	require.Equal(t, want.String(), got.String())
+}
+
+type fakeNextSchedule struct {
+	next   time.Time
+	called []time.Time
+}
+
+func (f *fakeNextSchedule) Next(t time.Time) time.Time {
+	f.called = append(f.called, t)
+	return f.next
+}
+
+func TestScheduleSpec_Cron(t *testing.T) {
+	lastStart := time.Date(2025, 1, 1, 14, 0, 0, 0, time.UTC)
+	now := time.Date(2025, 1, 1, 14, 20, 0, 0, time.UTC)
+
+	t.Run("delegates to Next with now", func(t *testing.T) {
+		fake := &fakeNextSchedule{next: time.Date(2025, 1, 1, 14, 45, 0, 0, time.UTC)}
+
+		got := Cron(fake)(lastStart, now)
+
+		require.Equal(t, fake.next.String(), got.String())
+		require.Equal(t, fmt.Sprint([]time.Time{now}), fmt.Sprint(fake.called))
+	})
+
+	t.Run("earliest across specs", func(t *testing.T) {
+		fake := &fakeNextSchedule{next: time.Date(2025, 1, 1, 14, 25, 0, 0, time.UTC)}
+		s := Schedule(newDummyRunnable(), HourlyAt(30), Cron(fake))
+
+		got := s.nextTime(lastStart, now)
+
+		require.Equal(t, fake.next.String(), got.String())
+		require.Equal(t, fmt.Sprint([]time.Time{now}), fmt.Sprint(fake.called))
+	})
 }
 
 func TestScheduleSpec_MultipleSpecs(t *testing.T) {
