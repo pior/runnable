@@ -255,7 +255,9 @@ func logCompleted(name string, err error) {
 	case err == nil || errors.Is(err, context.Canceled):
 		logger.Info(name + ": stopped")
 	case errors.As(err, &pe):
-		logger.Info(name+": stopped with error", "error", err, "stack", string(pe.Stack))
+		// slog's TextHandler formats errors with %+v, which for a PanicError
+		// includes the stack. Pass the message as a string to log the stack once.
+		logger.Info(name+": stopped with error", "error", err.Error(), "stack", string(pe.Stack))
 	default:
 		logger.Info(name+": stopped with error", "error", err)
 	}
