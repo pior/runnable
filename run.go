@@ -3,7 +3,7 @@ package runnable
 import (
 	"context"
 	"errors"
-	stdlog "log"
+	"os"
 )
 
 // RunGroup runs the runnables as processes of a [Manager] under [Run].
@@ -14,13 +14,14 @@ func RunGroup(runners ...Runnable) {
 }
 
 // Run runs a runnable until it returns or the process receives SIGINT or
-// SIGTERM, then calls [log.Fatal] on any error other than [context.Canceled].
-// It is intended as a main helper.
+// SIGTERM. On any error other than [context.Canceled], it logs the error with
+// the logger set by [SetLogger] and exits the process with status 1, without
+// running deferred functions. It is intended as a main helper.
 func Run(runner Runnable) {
-	ctx := context.Background()
-	err := Signal(runner).Run(ctx)
+	err := Signal(runner).Run(context.Background())
 	if err != nil && !errors.Is(err, context.Canceled) {
-		stdlog.Fatal(err)
+		logCompleted(runnableName(runner), err)
+		os.Exit(1)
 	}
 }
 

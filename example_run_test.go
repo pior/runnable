@@ -17,7 +17,7 @@ func (*Mailer) Run(ctx context.Context) error {
 
 func ExampleRun() {
 	// Run is meant for main: it stops on SIGINT or SIGTERM and exits the process
-	// with log.Fatal on error.
+	// with status 1 on error, after logging it.
 	m := runnable.NewManager()
 	m.RegisterService(&Mailer{})
 	m.RegisterProcess(runnable.Named("app", runnable.Func(func(context.Context) error {

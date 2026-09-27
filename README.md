@@ -78,7 +78,7 @@ level=INFO msg="manager: shutdown complete"
 
 ## Entrypoints
 
-`Run`, `RunFunc`, and `RunGroup` are intended as `main()` helpers. They handle OS signals (SIGINT/SIGTERM) and call `log.Fatal` on error.
+`Run`, `RunFunc`, and `RunGroup` are intended as `main()` helpers. They handle OS signals (SIGINT/SIGTERM) and on error, log it and exit with status 1.
 
 ```go
 func main() {
