@@ -33,6 +33,7 @@ This release is breaking, under a minor version. The module path stays
 
 ### Fixed
 
+- `Signal` stops listening when `Run` returns. It leaked a goroutine that kept catching the signals.
 - `RestartLimit` counts only restarts after a successful run, as documented. Restarts after errors counted too.
 - Manager no longer panics at `Run` on non-comparable runnables.
 - Manager shutdown reason is `completed` when the runnable returned nil, `died` otherwise.

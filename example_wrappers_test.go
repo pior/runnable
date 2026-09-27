@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"os"
 	"syscall"
 	"time"
 
@@ -93,29 +94,40 @@ func ExampleNameFromContext() {
 	// app/job
 }
 
+// sendSignal returns a runnable that sends sig to its own process, like a user
+// pressing Ctrl-C or Kubernetes stopping a pod, then waits for the cancellation.
+func sendSignal(sig os.Signal) runnable.Runnable {
+	return runnable.Named(runnable.Func(func(ctx context.Context) error {
+		p, _ := os.FindProcess(os.Getpid())
+		_ = p.Signal(sig)
+		<-ctx.Done()
+		return ctx.Err()
+	}), "app")
+}
+
 func ExampleSignal() {
-	ctx, cancel := context.WithCancel(context.Background())
-	cancel()
+	runnable.SetLogger(exampleLogger())
 
-	// Signal also cancels the context on SIGINT or SIGTERM. Run already does it.
-	r := runnable.Signal(runnable.Noop())
+	// Signal cancels the context on SIGINT or SIGTERM. Run already does it.
+	r := runnable.Signal(sendSignal(syscall.SIGTERM))
 
-	fmt.Println(r.Run(ctx))
+	fmt.Println(r.Run(context.Background()))
 
 	// Output:
+	// level=INFO msg="signal/app: received signal" signal=terminated
 	// context canceled
 }
 
 func ExampleSignal_signals() {
-	ctx, cancel := context.WithCancel(context.Background())
-	cancel()
+	runnable.SetLogger(exampleLogger())
 
 	// Cancel the context on SIGHUP only.
-	r := runnable.Signal(runnable.Noop(), syscall.SIGHUP)
+	r := runnable.Signal(sendSignal(syscall.SIGHUP), syscall.SIGHUP)
 
-	fmt.Println(r.Run(ctx))
+	fmt.Println(r.Run(context.Background()))
 
 	// Output:
+	// level=INFO msg="signal/app: received signal" signal=hangup
 	// context canceled
 }
 
