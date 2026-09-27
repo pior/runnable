@@ -165,6 +165,21 @@ func ExampleRecover_panicError() {
 	// has stack: true
 }
 
+func ExampleTimeout() {
+	// A job that is stuck, and stops when cancelled.
+	job := runnable.Named("report", runnable.Func(func(ctx context.Context) error {
+		<-ctx.Done()
+		return ctx.Err()
+	}))
+
+	err := runnable.Timeout(100*time.Millisecond, job).Run(context.Background())
+	fmt.Println(err)
+
+	// Output:
+	// level=INFO msg="timeout/report: timed out" timeout=100ms
+	// timed out after 100ms: context deadline exceeded
+}
+
 func ExampleNoop() {
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel()
