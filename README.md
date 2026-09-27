@@ -58,8 +58,9 @@ Each runnable in a manager runs with its full name in the context, such as `mana
 <details>
   <summary>Example logs</summary>
 
+A web server with a job queue and a scheduled task, stopped with Ctrl-C:
+
 ```
-$ go run ./examples/example/
 INFO manager/StupidJobQueue: started
 INFO manager/httpserver: started
 INFO manager/schedule/main.main.func2: started
@@ -71,7 +72,6 @@ INFO signal/manager: received signal signal=interrupt
 INFO manager: starting shutdown reason="context cancelled"
 INFO manager/httpserver: shutting down
 INFO manager/schedule/main.main.func2: stopped
-INFO manager/httpserver: stopped
 INFO manager/httpserver: stopped
 INFO manager/StupidJobQueue: stopped
 INFO manager: shutdown complete
