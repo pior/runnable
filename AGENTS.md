@@ -29,7 +29,7 @@ Go library for managing the lifecycle of long-running processes.
 - **Interface compliance:** use `var _ Interface = (*type)(nil)` compile-time checks, not test assertions.
 - **README:** keep the wrappers table concise, describe what it does, not configuration details.
 - **Tests:** use `127.0.0.1`, not `localhost`, to avoid IPv4/IPv6 resolution flakiness.
-- **Logging:** prefix log messages with the full composed name (`logger.Info(name + ": started")`). No `"runnable"` structured field. Log lifecycle events in pairs (`"shutting down"` then `"stopped"`).
+- **Logging:** prefix log messages with the full composed name (`logger.Info(name + ": started")`). No `"runnable"` structured field. Log lifecycle events in pairs (`"draining"` then `"drained"`). Wrappers log what they do; the manager logs outcomes (`"stopped"`, `"stopped with error"`), so a wrapper never logs its own returned error.
 
 ## Development
 

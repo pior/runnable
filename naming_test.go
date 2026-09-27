@@ -111,7 +111,7 @@ level=INFO msg="manager: shutdown complete"
 		m.RegisterProcess(Named("api", HTTPServer(server)))
 
 		require.NoError(t, m.Run(cancelledContext()))
-		require.Contains(t, logs.String(), `msg="manager/api: listening" addr=127.0.0.1:0`)
+		require.Contains(t, logs.String(), `msg="manager/api: listening" addr=127.0.0.1:`)
 		require.Contains(t, logs.String(), `msg="manager/api: stopped"`)
 	})
 }

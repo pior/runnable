@@ -63,42 +63,72 @@ func Listener(ln net.Listener) HTTPServerOption {
 
 func (r *httpServer) Run(ctx context.Context) error {
 	name := resolveName(ctx, r.name)
-	errChan := make(chan error)
 
-	go func() {
-		if r.listener != nil {
-			logger.Info(name+": listening", "addr", r.listener.Addr().String())
-			errChan <- r.server.Serve(r.listener)
-			return
-		}
-		logger.Info(name+": listening", "addr", r.server.Addr)
-		errChan <- r.server.ListenAndServe()
-	}()
+	ln, err := r.listen(ctx)
+	if err != nil {
+		return err
+	}
+	logger.Info(name+": listening", "addr", ln.Addr().String())
 
-	var err error
-	var shutdownErr error
+	errChan := make(chan error, 1)
+	go func() { errChan <- r.server.Serve(ln) }()
 
 	select {
-	case <-ctx.Done():
-		logger.Info(name + ": shutting down")
-		shutdownErr = r.shutdown()
-		err = <-errChan
-		logger.Info(name + ": stopped")
 	case err = <-errChan:
-		logger.Info(name+": stopped with error", "error", err)
-		// Server stopped on its own — no Shutdown needed.
+		// Server stopped on its own, no Shutdown needed.
+		return ignoreServerClosed(err)
+	case <-ctx.Done():
 	}
 
-	if errors.Is(err, http.ErrServerClosed) {
-		err = nil
+	// Serve may have failed as ctx was cancelled: there is nothing to drain.
+	select {
+	case err = <-errChan:
+		return ignoreServerClosed(err)
+	default:
 	}
-	if err != nil {
+
+	logger.Info(name+": draining", "timeout", r.shutdownTimeout)
+	shutdownErr := r.shutdown()
+	err = <-errChan
+
+	switch {
+	case errors.Is(shutdownErr, context.DeadlineExceeded):
+		logger.Info(name + ": drain timed out")
+	case shutdownErr != nil:
+		logger.Info(name + ": drain failed") // the cause is in the returned error
+	default:
+		logger.Info(name + ": drained")
+	}
+
+	if err = ignoreServerClosed(err); err != nil {
 		return err
 	}
 	if shutdownErr != nil {
 		return fmt.Errorf("server shutdown: %w", shutdownErr)
 	}
 	return nil
+}
+
+func ignoreServerClosed(err error) error {
+	if errors.Is(err, http.ErrServerClosed) {
+		return nil
+	}
+	return err
+}
+
+// listen returns the listener set with [Listener], or listens on
+// [http.Server.Addr] like [http.Server.ListenAndServe].
+func (r *httpServer) listen(ctx context.Context) (net.Listener, error) {
+	if r.listener != nil {
+		return r.listener, nil
+	}
+	addr := r.server.Addr
+	if addr == "" {
+		addr = ":http"
+	}
+	// Listen even when ctx is already cancelled: Run then drains and stops cleanly.
+	var lc net.ListenConfig
+	return lc.Listen(context.WithoutCancel(ctx), "tcp", addr)
 }
 
 func (r *httpServer) shutdown() error {
