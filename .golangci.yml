@@ -277,6 +277,10 @@ linters:
         # https://github.com/godoc-lint/godoc-lint?tab=readme-ov-file#require-stdlib-doclink
         - require-stdlib-doclink
 
+    gomoddirectives:
+      # The integration modules test the local runnable module.
+      replace-local: true
+
     govet:
       # Enable all analyzers.
       # Default: false
