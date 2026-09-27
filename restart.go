@@ -89,6 +89,7 @@ func ErrorResetAfter(d time.Duration) RestartOption {
 func (r *restart) Run(ctx context.Context) error {
 	name := resolveName(ctx, r.name)
 	restartCount := 0
+	successCount := 0
 	errorCount := 0
 
 	for {
@@ -114,10 +115,11 @@ func (r *restart) Run(ctx context.Context) error {
 		} else {
 			errorCount = 0
 
-			if r.limit > 0 && restartCount >= r.limit {
+			if r.limit > 0 && successCount >= r.limit {
 				logger.Info(name+": not restarting", "reason", "restart limit", "limit", r.limit)
 				return nil
 			}
+			successCount++
 		}
 
 		restartCount++

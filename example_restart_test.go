@@ -49,7 +49,7 @@ func ExampleRestart_options() {
 	}), "worker")
 
 	r := runnable.Restart(worker,
-		// Stop after 2 restarts following a successful run.
+		// Stop after 2 restarts following a successful run, errors do not count.
 		runnable.RestartLimit(2),
 		runnable.RestartDelay(10*time.Millisecond),
 		// Give up after 5 consecutive errors, returning the last one.
@@ -67,6 +67,8 @@ func ExampleRestart_options() {
 	// level=INFO msg="restart/worker: starting" restart=0 errors=0
 	// level=INFO msg="restart/worker: starting" restart=1 errors=1
 	// level=INFO msg="restart/worker: starting" restart=2 errors=2
+	// level=INFO msg="restart/worker: starting" restart=3 errors=0
+	// level=INFO msg="restart/worker: starting" restart=4 errors=0
 	// level=INFO msg="restart/worker: not restarting" reason="restart limit" limit=2
 	// <nil>
 }

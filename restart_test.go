@@ -28,6 +28,25 @@ func TestRestart(t *testing.T) {
 		require.Equal(t, 11, counter.counter) // 10 restarts = 11 executions
 	})
 
+	t.Run("errors do not count toward the restart limit", func(t *testing.T) {
+		callCount := 0
+		fn := Func(func(ctx context.Context) error {
+			callCount++
+			if callCount <= 3 {
+				return errors.New("failed")
+			}
+			return nil
+		})
+
+		r := Restart(fn,
+			RestartLimit(1),
+			ErrorBackoff(func(int) time.Duration { return 0 }))
+		require.NoError(t, r.Run(context.Background()))
+
+		// 3 errors, then a success restarted once.
+		require.Equal(t, 5, callCount)
+	})
+
 	t.Run("error limit", func(t *testing.T) {
 		counter := newDyingRunnable()
 
@@ -59,11 +78,9 @@ func TestRestart(t *testing.T) {
 		err := r.Run(context.Background())
 		require.NoError(t, err) // hit restart limit, not error limit
 
-		// Sequence: run1=err(errorCount=1, restartCount→1),
-		//           run2=ok(errorCount→0, restartCount=1<3, restartCount→2),
-		//           run3=err(errorCount=1, restartCount→3),
-		//           run4=ok(errorCount→0, restartCount=3>=3 → stop)
-		require.Equal(t, 4, callCount)
+		// Errors restart without counting toward RestartLimit(3): the 4th success
+		// is the 3rd one after a restart, and stops the loop.
+		require.Equal(t, 8, callCount)
 	})
 
 	t.Run("panic recovery", func(t *testing.T) {
