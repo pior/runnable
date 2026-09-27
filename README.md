@@ -93,6 +93,7 @@ Wrappers compose behavior around a `Runnable`:
 | Wrapper | Description |
 |---------|-------------|
 | `HTTPServer(server, opts...)` | Start and gracefully shut down a `*http.Server` |
+| `GRPCServer(addr, server, opts...)` | Start and gracefully stop a `*grpc.Server` |
 | `Restart(r, opts...)` | Auto-restart on exit and on failure, with configurable limits and backoff |
 | `Retry(r, opts...)` | Run again after errors until it succeeds, with configurable limit and backoff |
 | `Schedule(r, spec, opts...)` | Run on a schedule: intervals, hourly, daily, cron, or custom |

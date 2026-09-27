@@ -229,16 +229,103 @@ func TestHTTPServer(t *testing.T) {
 		require.Equal(t, "api", runnableName(r))
 	})
 
-	t.Run("shutdown timeout is configurable", func(t *testing.T) {
-		server := &http.Server{
-			Addr:    "127.0.0.1:0",
-			Handler: http.NotFoundHandler(),
-		}
+	t.Run("drain timeout is configurable", func(t *testing.T) {
+		r := HTTPServer(&http.Server{}, DrainTimeout(10*time.Second)).(*server)
 
-		r := HTTPServer(server, DrainTimeout(5*time.Second)).(*httpServer)
-
-		require.Equal(t, fmt.Sprint(5*time.Second), fmt.Sprint(r.shutdownTimeout))
+		require.Equal(t, fmt.Sprint(10*time.Second), fmt.Sprint(r.drainTimeout))
 	})
+}
+
+// fakeGRPCServer has the methods of a *grpc.Server. Serve blocks until
+// GracefulStop returns or Stop is called, GracefulStop blocks until release is
+// closed or Stop is called.
+type fakeGRPCServer struct {
+	release chan struct{}
+	stopped chan struct{}
+	forced  chan struct{}
+}
+
+func newFakeGRPCServer() *fakeGRPCServer {
+	return &fakeGRPCServer{
+		release: make(chan struct{}),
+		stopped: make(chan struct{}),
+		forced:  make(chan struct{}),
+	}
+}
+
+func (s *fakeGRPCServer) Serve(ln net.Listener) error {
+	select {
+	case <-s.stopped:
+	case <-s.forced:
+	}
+	return ln.Close()
+}
+
+func (s *fakeGRPCServer) GracefulStop() {
+	select {
+	case <-s.release:
+		close(s.stopped)
+	case <-s.forced:
+	}
+}
+
+func (s *fakeGRPCServer) Stop() { close(s.forced) }
+
+func TestGRPCServer(t *testing.T) {
+	listen := func(t *testing.T) net.Listener {
+		ln, err := net.Listen("tcp", "127.0.0.1:0")
+		require.NoError(t, err)
+		return ln
+	}
+
+	t.Run("drains on cancellation", func(t *testing.T) {
+		logs := captureLogs(t)
+		ln := listen(t)
+		s := newFakeGRPCServer()
+		close(s.release)
+
+		require.NoError(t, GRPCServer("", s, Listener(ln)).Run(cancelledContext()))
+		require.Equal(t, `level=INFO msg="grpcserver: listening" addr=`+ln.Addr().String()+"\n"+
+			`level=INFO msg="grpcserver: draining" timeout=5s`+"\n"+
+			`level=INFO msg="grpcserver: drained"`+"\n", logs.String())
+	})
+
+	t.Run("stops when the drain times out", func(t *testing.T) {
+		logs := captureLogs(t)
+		s := newFakeGRPCServer()
+
+		err := GRPCServer("", s, Listener(listen(t)), DrainTimeout(10*time.Millisecond)).Run(cancelledContext())
+		require.EqualError(t, err, "server shutdown: context deadline exceeded")
+		require.Contains(t, logs.String(), `level=INFO msg="grpcserver: drain timed out"`+"\n")
+		require.True(t, isClosed(s.forced), "Stop not called")
+	})
+
+	t.Run("returns the serve error", func(t *testing.T) {
+		s := &failingGRPCServer{err: errors.New("serve failed")}
+
+		err := GRPCServer("127.0.0.1:0", s).Run(context.Background())
+		require.EqualError(t, err, "serve failed")
+	})
+
+	t.Run("listen error", func(t *testing.T) {
+		err := GRPCServer("INVALID", newFakeGRPCServer()).Run(context.Background())
+		require.EqualError(t, err, "listen tcp: address INVALID: missing port in address")
+	})
+}
+
+type failingGRPCServer struct{ err error }
+
+func (s *failingGRPCServer) Serve(net.Listener) error { return s.err }
+func (s *failingGRPCServer) GracefulStop()            {}
+func (s *failingGRPCServer) Stop()                    {}
+
+func isClosed(ch <-chan struct{}) bool {
+	select {
+	case <-ch:
+		return true
+	default:
+		return false
+	}
 }
 
 type failingCloseListener struct{ net.Listener }
