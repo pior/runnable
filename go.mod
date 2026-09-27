@@ -1,6 +1,6 @@
 module github.com/pior/runnable
 
-go 1.25
+go 1.26
 
 require github.com/stretchr/testify v1.9.0
 

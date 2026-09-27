@@ -155,8 +155,7 @@ func ExampleRecover_panicError() {
 	err := r.Run(context.Background())
 
 	// PanicError carries the panic value and the stack, printed by %+v.
-	var pe *runnable.PanicError
-	if errors.As(err, &pe) {
+	if pe, ok := errors.AsType[*runnable.PanicError](err); ok {
 		fmt.Println("panic value:", pe.Value)
 		fmt.Println("has stack:", len(pe.Stack) > 0)
 	}
