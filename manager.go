@@ -178,18 +178,19 @@ func (m *Manager) Run(ctx context.Context) error {
 		m.processes[i].stopped = false
 	}
 
+	// Log before starting, so the runnable's own log lines come after.
 	for i, svc := range m.services {
+		logger.Info(childName(svc) + ": started")
 		go func() {
 			svcDone <- completed{i, Recover(svc.runnable).Run(withManagerName(svcCtx, childName(svc)))}
 		}()
-		logger.Info(childName(svc) + ": started")
 	}
 
 	for i, proc := range m.processes {
+		logger.Info(childName(proc) + ": started")
 		go func() {
 			procDone <- completed{i, Recover(proc.runnable).Run(withManagerName(procCtx, childName(proc)))}
 		}()
-		logger.Info(childName(proc) + ": started")
 	}
 
 	var errs []error
