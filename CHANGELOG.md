@@ -18,7 +18,7 @@ This release is breaking, under a minor version. The module path stays
 | `PanicError{value}` unexported | `PanicError{Value, Stack}`, `%+v` prints stack |
 | HTTPServer default drain 30s | 5s |
 | Manager log lines and error messages | new format, names from context |
-| HTTPServer logs `shutting down`, `stopped`, `stopped with error` | `draining`, `drained` or `drain timed out`; errors are returned, not logged |
+| HTTPServer logs `shutting down`, `stopped`, `stopped with error` | `draining`, then `drained`, `drain timed out` or `drain failed`; errors are returned, not logged |
 | `.Name(string)` on `Func`, `HTTPServer`, `Schedule`, `Manager` | removed, use `Named(name, r)` |
 | `HTTPServer(s).ShutdownTimeout(d).Listener(ln)` | `HTTPServer(s, DrainTimeout(d), Listener(ln))` |
 | `Restart(r).Limit(n).ErrorLimit(n).Delay(d).ErrorBackoff(fn).ErrorResetAfter(d)` | `Restart(r, RestartLimit(n), ...)` options |
