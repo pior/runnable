@@ -2,6 +2,7 @@ package runnable_test
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"time"
 
@@ -30,31 +31,27 @@ func ExampleSchedule() {
 	// context canceled
 }
 
-func ExampleSchedule_specs() {
+func ExampleScheduleContinueOnError() {
 	ctx, cancel := context.WithCancel(context.Background())
 
 	runs := 0
-	report := runnable.Func(func(context.Context) error {
+	report := runnable.Named("report", runnable.Func(func(context.Context) error {
 		runs++
-		fmt.Println("report", runs)
-		if runs == 2 {
-			cancel()
+		if runs == 1 {
+			return errors.New("database unavailable")
 		}
+		fmt.Println("report", runs)
+		cancel()
 		return nil
-	})
+	}))
 
-	// With several specs, the runnable runs at whichever fires next: every day at
-	// 03:00, every hour at :30, or 10ms after the last run started.
-	r := runnable.Schedule(report,
-		runnable.DailyAt(3, 0),
-		runnable.HourlyAt(30),
-		runnable.Every(10*time.Millisecond),
-	)
+	// The first run fails: the error is logged, and the report runs again at the next tick.
+	r := runnable.Schedule(report, runnable.Every(10*time.Millisecond), runnable.ScheduleContinueOnError())
 
 	fmt.Println(r.Run(ctx))
 
 	// Output:
-	// report 1
+	// level=INFO msg="schedule/report: failed, continuing" error="database unavailable"
 	// report 2
 	// context canceled
 }
