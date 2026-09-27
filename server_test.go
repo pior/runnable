@@ -67,7 +67,7 @@ func TestHTTPServer(t *testing.T) {
 
 		errChan := make(chan error, 1)
 		go func() {
-			errChan <- HTTPServer(server).Listener(ln).Run(ctx)
+			errChan <- HTTPServer(server, Listener(ln)).Run(ctx)
 		}()
 
 		resp, err := http.Get("http://" + ln.Addr().String())
@@ -137,45 +137,8 @@ func TestHTTPServer(t *testing.T) {
 			Handler: http.NotFoundHandler(),
 		}
 
-		r := HTTPServer(server).ShutdownTimeout(5 * time.Second)
+		r := HTTPServer(server, DrainTimeout(5*time.Second)).(*httpServer)
 
 		require.Equal(t, fmt.Sprint(5*time.Second), fmt.Sprint(r.shutdownTimeout))
 	})
-}
-
-func ExampleHTTPServer() {
-	ctx, cancel := initializeForExample()
-	defer cancel()
-
-	server := &http.Server{
-		Addr:    "127.0.0.1:8080",
-		Handler: http.NotFoundHandler(),
-	}
-
-	r := HTTPServer(server)
-
-	_ = r.Run(ctx)
-
-	// Output:
-	// level=INFO msg="httpserver: listening" addr=127.0.0.1:8080
-	// level=INFO msg="httpserver: shutting down"
-	// level=INFO msg="httpserver: stopped"
-}
-
-func ExampleHTTPServer_error() {
-	ctx, cancel := initializeForExample()
-	defer cancel()
-
-	server := &http.Server{
-		Addr:    "INVALID",
-		Handler: http.NotFoundHandler(),
-	}
-
-	r := HTTPServer(server)
-
-	_ = r.Run(ctx)
-
-	// Output:
-	// level=INFO msg="httpserver: listening" addr=INVALID
-	// level=INFO msg="httpserver: stopped with error" error="listen tcp: address INVALID: missing port in address"
 }

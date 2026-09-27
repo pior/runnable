@@ -5,7 +5,6 @@ import (
 	"context"
 	"errors"
 	"log/slog"
-	"os"
 	"sync"
 	"testing"
 	"time"
@@ -131,22 +130,6 @@ func cancelledContext() context.Context {
 	ctx, cancelFunc := context.WithCancel(ctx)
 	cancelFunc()
 	return ctx
-}
-
-func initializeForExample() (context.Context, func()) {
-	ctx := context.Background()
-	ctx, cancel := context.WithTimeout(ctx, 200*time.Millisecond)
-
-	SetLogger(slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{
-		ReplaceAttr: func(groups []string, a slog.Attr) slog.Attr {
-			if a.Key == slog.TimeKey {
-				return slog.Attr{}
-			}
-			return a
-		},
-	})))
-
-	return ctx, cancel
 }
 
 // logBuffer is a concurrency-safe buffer for capturing log output.

@@ -28,7 +28,7 @@ type ScheduleSpec func(lastStart, now time.Time) time.Time
 //
 //	sched, _ := cron.ParseStandard("15 */6 * * *") // every 6h at :15
 //	Schedule(worker, Cron(sched))
-func Schedule(runnable Runnable, specs ...ScheduleSpec) *schedule {
+func Schedule(runnable Runnable, specs ...ScheduleSpec) Runnable {
 	return &schedule{
 		name:     "schedule/" + runnableName(runnable),
 		runnable: runnable,

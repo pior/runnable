@@ -21,19 +21,38 @@ func TestRestart(t *testing.T) {
 	t.Run("restart limit", func(t *testing.T) {
 		counter := newCounterRunnable()
 
-		r := Restart(counter).Limit(10)
+		r := Restart(counter, RestartLimit(10))
 		err := r.Run(context.Background())
 		require.NoError(t, err)
 
 		require.Equal(t, 11, counter.counter) // 10 restarts = 11 executions
 	})
 
+	t.Run("errors do not count toward the restart limit", func(t *testing.T) {
+		callCount := 0
+		fn := Func(func(ctx context.Context) error {
+			callCount++
+			if callCount <= 3 {
+				return errors.New("failed")
+			}
+			return nil
+		})
+
+		r := Restart(fn,
+			RestartLimit(1),
+			ErrorBackoff(func(int) time.Duration { return 0 }))
+		require.NoError(t, r.Run(context.Background()))
+
+		// 3 errors, then a success restarted once.
+		require.Equal(t, 5, callCount)
+	})
+
 	t.Run("error limit", func(t *testing.T) {
 		counter := newDyingRunnable()
 
-		r := Restart(counter).
-			ErrorLimit(10).
-			ErrorBackoff(func(int) time.Duration { return 0 })
+		r := Restart(counter,
+			RestartErrorLimit(10),
+			ErrorBackoff(func(int) time.Duration { return 0 }))
 		err := r.Run(context.Background())
 		require.EqualError(t, err, "dying")
 
@@ -42,7 +61,7 @@ func TestRestart(t *testing.T) {
 
 	t.Run("error count resets on success", func(t *testing.T) {
 		// Alternates: error, success, error, success, ...
-		// Error count should never exceed 1, so ErrorLimit(2) is never reached.
+		// Error count should never exceed 1, so RestartErrorLimit(2) is never reached.
 		callCount := 0
 		fn := Func(func(ctx context.Context) error {
 			callCount++
@@ -52,18 +71,16 @@ func TestRestart(t *testing.T) {
 			return nil
 		})
 
-		r := Restart(fn).
-			ErrorLimit(2).
-			Limit(3).
-			ErrorBackoff(func(int) time.Duration { return 0 })
+		r := Restart(fn,
+			RestartErrorLimit(2),
+			RestartLimit(3),
+			ErrorBackoff(func(int) time.Duration { return 0 }))
 		err := r.Run(context.Background())
 		require.NoError(t, err) // hit restart limit, not error limit
 
-		// Sequence: run1=err(errorCount=1, restartCount→1),
-		//           run2=ok(errorCount→0, restartCount=1<3, restartCount→2),
-		//           run3=err(errorCount=1, restartCount→3),
-		//           run4=ok(errorCount→0, restartCount=3>=3 → stop)
-		require.Equal(t, 4, callCount)
+		// Errors restart without counting toward RestartLimit(3): the 4th success
+		// is the 3rd one after a restart, and stops the loop.
+		require.Equal(t, 8, callCount)
 	})
 
 	t.Run("panic recovery", func(t *testing.T) {
@@ -73,8 +90,7 @@ func TestRestart(t *testing.T) {
 			panic("boom")
 		})
 
-		r := Restart(fn).ErrorLimit(3).
-			ErrorBackoff(func(int) time.Duration { return 0 })
+		r := Restart(fn, RestartErrorLimit(3), ErrorBackoff(func(int) time.Duration { return 0 }))
 		err := r.Run(context.Background())
 
 		require.Equal(t, 3, callCount)
@@ -93,9 +109,9 @@ func TestRestart(t *testing.T) {
 
 			ctx, cancel := context.WithCancel(context.Background())
 
-			r := Restart(fn).ErrorBackoff(func(n int) time.Duration {
+			r := Restart(fn, ErrorBackoff(func(n int) time.Duration {
 				return 10 * time.Second
-			})
+			}))
 
 			errChan := make(chan error, 1)
 			go func() {
@@ -135,12 +151,12 @@ func TestRestart(t *testing.T) {
 			ctx, cancel := context.WithCancel(context.Background())
 
 			backoffCalls := []int{}
-			r := Restart(fn).
-				ErrorResetAfter(30 * time.Minute).
+			r := Restart(fn,
+				ErrorResetAfter(30*time.Minute),
 				ErrorBackoff(func(n int) time.Duration {
 					backoffCalls = append(backoffCalls, n)
 					return 0
-				})
+				}))
 
 			errChan := make(chan error, 1)
 			go func() {
@@ -165,34 +181,4 @@ func TestRestart(t *testing.T) {
 			require.Equal(t, []int{1, 1}, backoffCalls)
 		})
 	})
-}
-
-func ExampleRestart() {
-	ctx, cancel := initializeForExample()
-	defer cancel()
-
-	worker := newDyingRunnable()
-	r := Restart(worker).ErrorLimit(3)
-	_ = r.Run(ctx)
-
-	// Output:
-	// level=INFO msg="restart/dyingRunnable: starting" restart=0 errors=0
-	// level=INFO msg="restart/dyingRunnable: starting" restart=1 errors=1
-	// level=INFO msg="restart/dyingRunnable: starting" restart=2 errors=2
-	// level=INFO msg="restart/dyingRunnable: not restarting" reason="error limit" limit=3
-}
-
-func ExampleRestart_worker() {
-	ctx, cancel := initializeForExample()
-	defer cancel()
-
-	worker := newCounterRunnable()
-	r := Restart(worker).Limit(2).Delay(time.Millisecond)
-	_ = r.Run(ctx)
-
-	// Output:
-	// level=INFO msg="restart/counter: starting" restart=0 errors=0
-	// level=INFO msg="restart/counter: starting" restart=1 errors=0
-	// level=INFO msg="restart/counter: starting" restart=2 errors=0
-	// level=INFO msg="restart/counter: not restarting" reason="restart limit" limit=2
 }

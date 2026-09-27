@@ -38,15 +38,18 @@ A `Manager` is itself a `Runnable`, so managers can be nested for independent sh
 
 ### Shutdown budget
 
-`ShutdownTimeout` (default 30s) is the total budget for both shutdown phases. Processes get half of it, services get the rest: at least half, more when processes stop early. Runnables still running when their phase ends are reported with `ErrShutdownTimeout`.
+Each shutdown phase has its own timeout: `ProcessShutdownTimeout` (default 15s) starts with the shutdown, `ServiceShutdownTimeout` (default 10s) starts when services are cancelled. Runnables still running when their phase ends are reported with `ErrShutdownTimeout`.
 
-It maps to a platform grace period such as Kubernetes `terminationGracePeriodSeconds`, which must exceed it to leave room for the process to exit. For example, with a 30s grace period:
+The worst case is the sum, 25s by default. Keep it below the platform grace period, such as Kubernetes `terminationGracePeriodSeconds` (default 30s), to leave room for the process to exit. For example, with a 60s grace period:
 
 ```go
-m := runnable.NewManager().ShutdownTimeout(25 * time.Second)
+m := runnable.NewManager(
+    runnable.ProcessShutdownTimeout(45*time.Second),
+    runnable.ServiceShutdownTimeout(10*time.Second),
+)
 ```
 
-For nested managers, the inner budget must be smaller than the outer one. `HTTPServer` drains for 5s by default, which must stay below the process phase of the budget.
+For nested managers, the inner sum must stay below the timeout of the phase the inner manager runs in. `HTTPServer` drains for 5s by default, which must stay below `ProcessShutdownTimeout`.
 
 ### Names
 
@@ -55,23 +58,20 @@ Each runnable in a manager runs with its full name in the context, such as `mana
 <details>
   <summary>Example logs</summary>
 
+Output of the package example in [example_test.go](example_test.go): a job queue service, a scheduled cleanup task, and an app process whose completion shuts the manager down.
+
 ```
-$ go run ./examples/example/
-INFO manager/StupidJobQueue: started
-INFO manager/httpserver: started
-INFO manager/schedule/main.main.func2: started
-INFO manager/httpserver: listening addr=localhost:8000
-Task executed: 0
-...
-^C
-INFO signal/manager: received signal signal=interrupt
-INFO manager: starting shutdown reason="context cancelled"
-INFO manager/httpserver: shutting down
-INFO manager/schedule/main.main.func2: stopped
-INFO manager/httpserver: stopped
-INFO manager/httpserver: stopped
-INFO manager/StupidJobQueue: stopped
-INFO manager: shutdown complete
+level=INFO msg="manager/JobQueue: started"
+level=INFO msg="manager/schedule/CleanupTask: started"
+level=INFO msg="manager/app: started"
+JobQueue: cleanup-1
+JobQueue: cleanup-2
+JobQueue: cleanup-3
+level=INFO msg="manager/app: stopped"
+level=INFO msg="manager: starting shutdown" reason="app completed"
+level=INFO msg="manager/schedule/CleanupTask: stopped"
+level=INFO msg="manager/JobQueue: stopped"
+level=INFO msg="manager: shutdown complete"
 ```
 
 </details>
@@ -92,8 +92,8 @@ Wrappers compose behavior around a `Runnable`:
 
 | Wrapper | Description |
 |---------|-------------|
-| `HTTPServer(server)` | Start and gracefully shut down a `*http.Server` |
-| `Restart(r)` | Auto-restart on exit and on failure, with configurable limits and backoff |
+| `HTTPServer(server, opts...)` | Start and gracefully shut down a `*http.Server` |
+| `Restart(r, opts...)` | Auto-restart on exit and on failure, with configurable limits and backoff |
 | `Schedule(r, specs...)` | Run on a schedule: intervals, hourly, daily, cron, or custom |
 | `Recover(r)` | Catch panics and return them as errors |
 | `Signal(r, signals...)` | Cancel context on OS signals |
