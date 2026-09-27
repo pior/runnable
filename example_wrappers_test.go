@@ -60,9 +60,9 @@ func ExampleNamed() {
 
 	// A function is named after its Go symbol, Named gives it a readable name
 	// for log lines and errors.
-	api := runnable.Named(runnable.Func(func(context.Context) error {
+	api := runnable.Named("api", runnable.Func(func(context.Context) error {
 		return errors.New("port in use")
-	}), "api")
+	}))
 
 	m := runnable.NewManager()
 	m.RegisterProcess(api)
@@ -86,9 +86,9 @@ func ExampleNameFromContext() {
 	})
 
 	m := runnable.NewManager()
-	m.RegisterProcess(runnable.Named(job, "job"))
+	m.RegisterProcess(runnable.Named("job", job))
 
-	_ = runnable.Named(m, "app").Run(context.Background())
+	_ = runnable.Named("app", m).Run(context.Background())
 
 	// Output:
 	// app/job
@@ -97,12 +97,12 @@ func ExampleNameFromContext() {
 // sendSignal returns a runnable that sends sig to its own process, like a user
 // pressing Ctrl-C or Kubernetes stopping a pod, then waits for the cancellation.
 func sendSignal(sig os.Signal) runnable.Runnable {
-	return runnable.Named(runnable.Func(func(ctx context.Context) error {
+	return runnable.Named("app", runnable.Func(func(ctx context.Context) error {
 		p, _ := os.FindProcess(os.Getpid())
 		_ = p.Signal(sig)
 		<-ctx.Done()
 		return ctx.Err()
-	}), "app")
+	}))
 }
 
 func ExampleSignal() {
@@ -179,7 +179,7 @@ func ExampleNoop_servicesOnly() {
 	// never does, so a manager of services runs until it is cancelled.
 	m := runnable.NewManager()
 	m.RegisterService(&JobQueue{})
-	m.RegisterProcess(runnable.Named(runnable.Noop(), "idle"))
+	m.RegisterProcess(runnable.Named("idle", runnable.Noop()))
 
 	ctx, cancel := context.WithCancel(context.Background())
 	time.AfterFunc(10*time.Millisecond, cancel)

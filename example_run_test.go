@@ -14,9 +14,9 @@ func ExampleRun() {
 	// with log.Fatal on error.
 	m := runnable.NewManager()
 	m.RegisterService(&JobQueue{})
-	m.RegisterProcess(runnable.Named(runnable.Func(func(context.Context) error {
+	m.RegisterProcess(runnable.Named("app", runnable.Func(func(context.Context) error {
 		return nil
-	}), "app"))
+	})))
 
 	runnable.Run(m)
 
@@ -44,7 +44,7 @@ func ExampleRunGroup() {
 
 	// RunGroup runs the runnables as processes of a manager, under Run.
 	runnable.RunGroup(
-		runnable.Named(runnable.Func(func(context.Context) error { return nil }), "migrate"),
+		runnable.Named("migrate", runnable.Func(func(context.Context) error { return nil })),
 	)
 
 	// Output:

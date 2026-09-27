@@ -13,9 +13,9 @@ import (
 func ExampleNewManager() {
 	runnable.SetLogger(exampleLogger())
 
-	app := runnable.Named(runnable.Func(func(context.Context) error {
+	app := runnable.Named("app", runnable.Func(func(context.Context) error {
 		return nil // the app completes, which shuts the manager down
-	}), "app")
+	}))
 
 	m := runnable.NewManager()
 	m.RegisterService(&JobQueue{})
@@ -39,10 +39,10 @@ func ExampleNewManager_options() {
 	// stuck ignores cancellation, like a process blocked on a call without a context.
 	unblock := make(chan struct{})
 	defer close(unblock)
-	stuck := runnable.Named(runnable.Func(func(context.Context) error {
+	stuck := runnable.Named("stuck", runnable.Func(func(context.Context) error {
 		<-unblock
 		return nil
-	}), "stuck")
+	}))
 
 	m := runnable.NewManager(
 		runnable.ProcessShutdownTimeout(100*time.Millisecond),
@@ -72,9 +72,9 @@ func ExampleNewManager_options() {
 func ExampleNewManager_failure() {
 	runnable.SetLogger(exampleLogger())
 
-	worker := runnable.Named(runnable.Func(func(context.Context) error {
+	worker := runnable.Named("worker", runnable.Func(func(context.Context) error {
 		return errors.New("connection lost")
-	}), "worker")
+	}))
 
 	m := runnable.NewManager()
 	m.RegisterService(&JobQueue{})
@@ -98,12 +98,12 @@ func ExampleNewManager_nested() {
 	// The inner manager stops its own process before its own service, while the
 	// outer manager keeps its service running until the inner manager stopped.
 	inner := runnable.NewManager()
-	inner.RegisterService(runnable.Named(runnable.Noop(), "cache"))
-	inner.RegisterProcess(runnable.Named(runnable.Noop(), "api"))
+	inner.RegisterService(runnable.Named("cache", runnable.Noop()))
+	inner.RegisterProcess(runnable.Named("api", runnable.Noop()))
 
 	outer := runnable.NewManager()
-	outer.RegisterService(runnable.Named(runnable.Noop(), "database"))
-	outer.RegisterProcess(runnable.Named(inner, "web"))
+	outer.RegisterService(runnable.Named("database", runnable.Noop()))
+	outer.RegisterProcess(runnable.Named("web", inner))
 
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel()

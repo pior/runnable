@@ -48,9 +48,9 @@ func ExampleCloser_manager() {
 	// As a service, the pool is closed after all processes stopped.
 	m := runnable.NewManager()
 	m.RegisterService(runnable.Closer(Pool{}))
-	m.RegisterProcess(runnable.Named(runnable.Func(func(context.Context) error {
+	m.RegisterProcess(runnable.Named("app", runnable.Func(func(context.Context) error {
 		return nil
-	}), "app"))
+	})))
 
 	fmt.Println(m.Run(context.Background()))
 

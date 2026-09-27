@@ -19,7 +19,7 @@ func Test_runnableName(t *testing.T) {
 	)
 
 	require.Equal(t, "custom-name",
-		runnableName(Named(Func(funcTesting), "custom-name")),
+		runnableName(Named("custom-name", Func(funcTesting))),
 	)
 
 	require.Equal(t, "dummyRunnable",
@@ -61,7 +61,7 @@ func TestNamed(t *testing.T) {
 			logs := captureLogs(t)
 
 			m := NewManager()
-			m.RegisterProcess(Named(newDyingRunnable(), "worker"))
+			m.RegisterProcess(Named("worker", newDyingRunnable()))
 
 			err := m.Run(context.Background())
 			require.EqualError(t, err, "manager: worker: dying")
@@ -77,7 +77,7 @@ level=INFO msg="manager: shutdown complete"
 		synctest.Test(t, func(t *testing.T) {
 			var got string
 			m := NewManager()
-			m.RegisterProcess(Named(Named(nameRecorder(&got), "inner"), "outer"))
+			m.RegisterProcess(Named("outer", Named("inner", nameRecorder(&got))))
 
 			require.NoError(t, m.Run(context.Background()))
 			require.Equal(t, "manager/outer", got)
@@ -86,7 +86,7 @@ level=INFO msg="manager: shutdown complete"
 
 	t.Run("at top level", func(t *testing.T) {
 		var got string
-		Run(Named(nameRecorder(&got), "x"))
+		Run(Named("x", nameRecorder(&got)))
 		require.Equal(t, "x", got)
 	})
 
@@ -97,7 +97,7 @@ level=INFO msg="manager: shutdown complete"
 			m := NewManager()
 			m.RegisterProcess(newDyingRunnable())
 
-			err := Named(m, "app").Run(context.Background())
+			err := Named("app", m).Run(context.Background())
 			require.EqualError(t, err, "app: dyingRunnable: dying")
 			require.Contains(t, logs.String(), `msg="app/dyingRunnable: started"`)
 		})
@@ -108,7 +108,7 @@ level=INFO msg="manager: shutdown complete"
 
 		server := &http.Server{Addr: "127.0.0.1:0", Handler: http.NotFoundHandler()}
 		m := NewManager()
-		m.RegisterProcess(Named(HTTPServer(server), "api"))
+		m.RegisterProcess(Named("api", HTTPServer(server)))
 
 		require.NoError(t, m.Run(cancelledContext()))
 		require.Contains(t, logs.String(), `msg="manager/api: listening" addr=127.0.0.1:0`)
@@ -140,7 +140,7 @@ func TestNameFromContext(t *testing.T) {
 
 			var got string
 			m := NewManager()
-			m.RegisterProcess(Restart(Named(nameRecorder(&got), "job"), RestartLimit(1)))
+			m.RegisterProcess(Restart(Named("job", nameRecorder(&got)), RestartLimit(1)))
 
 			require.NoError(t, m.Run(context.Background()))
 			require.Equal(t, "manager/restart/job", got)
@@ -154,10 +154,10 @@ func TestNameFromContext(t *testing.T) {
 
 			var got string
 			inner := NewManager()
-			inner.RegisterProcess(Named(nameRecorder(&got), "x"))
+			inner.RegisterProcess(Named("x", nameRecorder(&got)))
 
 			outer := NewManager()
-			outer.RegisterProcess(Named(inner, "inner"))
+			outer.RegisterProcess(Named("inner", inner))
 
 			require.NoError(t, outer.Run(context.Background()))
 			require.Equal(t, "manager/inner/x", got)
