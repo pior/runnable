@@ -76,11 +76,15 @@ func (r *httpServer) Run(ctx context.Context) error {
 	select {
 	case err = <-errChan:
 		// Server stopped on its own, no Shutdown needed.
-		if errors.Is(err, http.ErrServerClosed) {
-			return nil
-		}
-		return err
+		return ignoreServerClosed(err)
 	case <-ctx.Done():
+	}
+
+	// Serve may have failed as ctx was cancelled: there is nothing to drain.
+	select {
+	case err = <-errChan:
+		return ignoreServerClosed(err)
+	default:
 	}
 
 	logger.Info(name+": draining", "timeout", r.shutdownTimeout)
@@ -91,18 +95,25 @@ func (r *httpServer) Run(ctx context.Context) error {
 	case errors.Is(shutdownErr, context.DeadlineExceeded):
 		logger.Info(name + ": drain timed out")
 	case shutdownErr != nil:
-		logger.Info(name+": drain failed", "error", shutdownErr)
+		logger.Info(name + ": drain failed") // the cause is in the returned error
 	default:
 		logger.Info(name + ": drained")
 	}
 
-	if err != nil && !errors.Is(err, http.ErrServerClosed) {
+	if err = ignoreServerClosed(err); err != nil {
 		return err
 	}
 	if shutdownErr != nil {
 		return fmt.Errorf("server shutdown: %w", shutdownErr)
 	}
 	return nil
+}
+
+func ignoreServerClosed(err error) error {
+	if errors.Is(err, http.ErrServerClosed) {
+		return nil
+	}
+	return err
 }
 
 // listen returns the listener set with [Listener], or listens on

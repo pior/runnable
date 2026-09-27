@@ -2,6 +2,7 @@ package runnable
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"net"
@@ -143,6 +144,26 @@ func TestHTTPServer(t *testing.T) {
 			`level=INFO msg="httpserver: drain timed out"`+"\n")
 	})
 
+	t.Run("drain failure", func(t *testing.T) {
+		logs := captureLogs(t)
+		ln, err := net.Listen("tcp", "127.0.0.1:0")
+		require.NoError(t, err)
+
+		ctx, cancel := context.WithCancel(context.Background())
+		errChan := make(chan error, 1)
+		go func() {
+			errChan <- HTTPServer(&http.Server{Handler: http.NotFoundHandler()}, Listener(failingCloseListener{ln})).Run(ctx)
+		}()
+
+		require.Eventually(t, func() bool { return logs.String() != "" }, time.Second, time.Millisecond)
+		cancel()
+		require.EqualError(t, <-errChan, "server shutdown: close failed")
+
+		// The error is returned, not logged.
+		require.Contains(t, logs.String(), `level=INFO msg="httpserver: draining" timeout=5s`+"\n"+
+			`level=INFO msg="httpserver: drain failed"`+"\n")
+	})
+
 	t.Run("logs the listening address once listening", func(t *testing.T) {
 		logs := captureLogs(t)
 		server := &http.Server{
@@ -218,4 +239,11 @@ func TestHTTPServer(t *testing.T) {
 
 		require.Equal(t, fmt.Sprint(5*time.Second), fmt.Sprint(r.shutdownTimeout))
 	})
+}
+
+type failingCloseListener struct{ net.Listener }
+
+func (l failingCloseListener) Close() error {
+	_ = l.Listener.Close()
+	return errors.New("close failed")
 }
