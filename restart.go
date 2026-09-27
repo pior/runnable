@@ -70,12 +70,27 @@ func RestartDelay(d time.Duration) RestartOption {
 	return restartOptionFunc(func(r *restart) { r.delay = d })
 }
 
-// ErrorBackoff sets the function that determines the delay before restarting
-// after an error. It receives the current consecutive error count (starting at 1).
-// The default backs off: immediate for the first 3 errors, 10s up to 10, then 1m.
-func ErrorBackoff(fn func(errors int) time.Duration) RestartOption {
-	return restartOptionFunc(func(r *restart) { r.errorBackoffFn = fn })
+// BackoffOption configures the error backoff of [Restart] and [Retry].
+type BackoffOption interface {
+	RestartOption
+	RetryOption
 }
+
+var _ BackoffOption = errorBackoff(nil)
+
+// ErrorBackoff sets the function that determines the delay before running again
+// after an error, for [Restart] and [Retry]. It receives the current consecutive
+// error count (starting at 1). The default backs off: immediate for the first 3
+// errors, 10s up to 10, then 1m.
+func ErrorBackoff(fn func(errors int) time.Duration) BackoffOption {
+	return errorBackoff(fn)
+}
+
+type errorBackoff func(errors int) time.Duration
+
+func (f errorBackoff) applyRestart(r *restart) { r.errorBackoffFn = f }
+
+func (f errorBackoff) applyRetry(r *retry) { r.errorBackoffFn = f }
 
 // ErrorResetAfter resets the consecutive error count when a single run lasted
 // at least the given duration before failing. This prevents long-running services
