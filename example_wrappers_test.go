@@ -180,6 +180,21 @@ func ExampleTimeout() {
 	// timed out after 100ms: context deadline exceeded
 }
 
+func ExampleDelay() {
+	warmup := runnable.Named("warmup", runnable.Func(func(context.Context) error {
+		fmt.Println("warming up")
+		return nil
+	}))
+
+	fmt.Println(runnable.Delay(10*time.Millisecond, warmup).Run(context.Background()))
+
+	// Output:
+	// level=INFO msg="delay/warmup: waiting" delay=10ms
+	// level=INFO msg="delay/warmup: starting"
+	// warming up
+	// <nil>
+}
+
 func ExampleNoop() {
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel()

@@ -8,8 +8,8 @@
 // and [RunGroup] add signal handling for main.
 //
 // Wrappers compose behavior around a runnable: [HTTPServer], [Restart],
-// [Retry], [Schedule], [Timeout], [Recover], [Signal], [Closer], [Func] and
-// [Named].
+// [Retry], [Schedule], [Timeout], [Delay], [Recover], [Signal], [Closer], [Func]
+// and [Named].
 //
 // Names flow through the context. A parent [Manager] or [Named] assigns them,
 // wrappers pass them through, and [NameFromContext] reads them.

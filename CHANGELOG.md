@@ -36,6 +36,7 @@ This release is breaking, under a minor version. The module path stays
 - `ScheduleContinueOnError()`: `Schedule` logs a failed run and runs again at the next tick, instead of stopping.
 - `ServerOption`: `DrainTimeout` and `Listener`, shared by the server wrappers.
 - `Retry(r, opts...)`: run again after errors until success, with `RetryLimit` and the `ErrorBackoff` shared with `Restart`.
+- `Delay(d, r)`: wait for d before running r, to stagger the start of jobs.
 - `Timeout(d, r)`: cancel a runnable running for longer than d, and return an error wrapping `context.DeadlineExceeded`.
 - `Cron(s)`: schedule spec for any type with a `Next(time.Time) time.Time` method, such as robfig/cron schedules.
 
