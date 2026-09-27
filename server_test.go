@@ -67,7 +67,7 @@ func TestHTTPServer(t *testing.T) {
 
 		errChan := make(chan error, 1)
 		go func() {
-			errChan <- HTTPServer(server, Listener(ln)).Run(ctx)
+			errChan <- HTTPServer(server, HTTPListener(ln)).Run(ctx)
 		}()
 
 		resp, err := http.Get("http://" + ln.Addr().String())

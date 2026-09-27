@@ -21,7 +21,7 @@ func TestRestart(t *testing.T) {
 	t.Run("restart limit", func(t *testing.T) {
 		counter := newCounterRunnable()
 
-		r := Restart(counter, Limit(10))
+		r := Restart(counter, RestartLimit(10))
 		err := r.Run(context.Background())
 		require.NoError(t, err)
 
@@ -32,7 +32,7 @@ func TestRestart(t *testing.T) {
 		counter := newDyingRunnable()
 
 		r := Restart(counter,
-			ErrorLimit(10),
+			RestartErrorLimit(10),
 			ErrorBackoff(func(int) time.Duration { return 0 }))
 		err := r.Run(context.Background())
 		require.EqualError(t, err, "dying")
@@ -42,7 +42,7 @@ func TestRestart(t *testing.T) {
 
 	t.Run("error count resets on success", func(t *testing.T) {
 		// Alternates: error, success, error, success, ...
-		// Error count should never exceed 1, so ErrorLimit(2) is never reached.
+		// Error count should never exceed 1, so RestartErrorLimit(2) is never reached.
 		callCount := 0
 		fn := Func(func(ctx context.Context) error {
 			callCount++
@@ -53,8 +53,8 @@ func TestRestart(t *testing.T) {
 		})
 
 		r := Restart(fn,
-			ErrorLimit(2),
-			Limit(3),
+			RestartErrorLimit(2),
+			RestartLimit(3),
 			ErrorBackoff(func(int) time.Duration { return 0 }))
 		err := r.Run(context.Background())
 		require.NoError(t, err) // hit restart limit, not error limit
@@ -73,7 +73,7 @@ func TestRestart(t *testing.T) {
 			panic("boom")
 		})
 
-		r := Restart(fn, ErrorLimit(3), ErrorBackoff(func(int) time.Duration { return 0 }))
+		r := Restart(fn, RestartErrorLimit(3), ErrorBackoff(func(int) time.Duration { return 0 }))
 		err := r.Run(context.Background())
 
 		require.Equal(t, 3, callCount)
@@ -171,7 +171,7 @@ func ExampleRestart() {
 	defer cancel()
 
 	worker := newDyingRunnable()
-	r := Restart(worker, ErrorLimit(3))
+	r := Restart(worker, RestartErrorLimit(3))
 	_ = r.Run(ctx)
 
 	// Output:
@@ -186,7 +186,7 @@ func ExampleRestart_worker() {
 	defer cancel()
 
 	worker := newCounterRunnable()
-	r := Restart(worker, Limit(2), Delay(time.Millisecond))
+	r := Restart(worker, RestartLimit(2), RestartDelay(time.Millisecond))
 	_ = r.Run(ctx)
 
 	// Output:

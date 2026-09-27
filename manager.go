@@ -39,38 +39,41 @@ type Manager struct {
 // and errors, is "manager" unless a parent [Manager] or [Named] assigns one.
 //
 // The shutdown phases are bounded by [ProcessShutdownTimeout] and
-// [ServiceShutdownTimeout]. The worst case shutdown is their sum, 25 seconds by
+// [ServiceShutdownTimeout]. The worst case shutdown is their sum, 30 seconds by
 // default. It must stay below a platform grace period such as Kubernetes
-// terminationGracePeriodSeconds, 30 seconds by default, to leave room for the
-// process to exit. For nested managers, the inner sum must stay below the
+// terminationGracePeriodSeconds to leave room for the process to exit. The
+// Kubernetes default is also 30 seconds, so raise it, or lower the timeouts. For nested managers, the inner sum must stay below the
 // timeout of the phase the inner manager is registered in.
 //
 //	runnable.NewManager(runnable.ProcessShutdownTimeout(40*time.Second))
 func NewManager(opts ...ManagerOption) *Manager {
 	m := &Manager{
-		processTimeout: 20 * time.Second,
-		serviceTimeout: 5 * time.Second,
+		processTimeout: 15 * time.Second,
+		serviceTimeout: 15 * time.Second,
 	}
 	for _, opt := range opts {
-		opt(m)
+		opt.applyManager(m)
 	}
 	return m
 }
 
 // ManagerOption configures [NewManager].
-type ManagerOption func(*Manager)
+type ManagerOption interface{ applyManager(*Manager) }
+
+type managerOptionFunc func(*Manager)
+
+func (f managerOptionFunc) applyManager(m *Manager) { f(m) }
 
 // ProcessShutdownTimeout sets how long processes have to stop, from the start
-// of the shutdown. Defaults to 20 seconds, enough for the default drain of
-// [HTTPServer].
+// of the shutdown. Defaults to 15 seconds.
 func ProcessShutdownTimeout(d time.Duration) ManagerOption {
-	return func(m *Manager) { m.processTimeout = d }
+	return managerOptionFunc(func(m *Manager) { m.processTimeout = d })
 }
 
 // ServiceShutdownTimeout sets how long services have to stop, from when they
-// are cancelled after the processes stopped. Defaults to 5 seconds.
+// are cancelled after the processes stopped. Defaults to 15 seconds.
 func ServiceShutdownTimeout(d time.Duration) ManagerOption {
-	return func(m *Manager) { m.serviceTimeout = d }
+	return managerOptionFunc(func(m *Manager) { m.serviceTimeout = d })
 }
 
 func (m *Manager) runnableName() string { return "manager" }

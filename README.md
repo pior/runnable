@@ -38,9 +38,9 @@ A `Manager` is itself a `Runnable`, so managers can be nested for independent sh
 
 ### Shutdown budget
 
-Each shutdown phase has its own timeout: `ProcessShutdownTimeout` (default 20s) starts with the shutdown, `ServiceShutdownTimeout` (default 5s) starts when services are cancelled. Runnables still running when their phase ends are reported with `ErrShutdownTimeout`.
+Each shutdown phase has its own timeout: `ProcessShutdownTimeout` (default 15s) starts with the shutdown, `ServiceShutdownTimeout` (default 15s) starts when services are cancelled. Runnables still running when their phase ends are reported with `ErrShutdownTimeout`.
 
-The worst case is the sum, 25s by default. Keep it below the platform grace period, such as Kubernetes `terminationGracePeriodSeconds` (default 30s), to leave room for the process to exit. For example, with a 60s grace period:
+The worst case is the sum, 30s by default. Keep it below the platform grace period, such as Kubernetes `terminationGracePeriodSeconds`, to leave room for the process to exit. The Kubernetes default is also 30s: raise it, or lower the timeouts. For example, with a 60s grace period:
 
 ```go
 m := runnable.NewManager(

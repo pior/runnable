@@ -140,7 +140,7 @@ func TestNameFromContext(t *testing.T) {
 
 			var got string
 			m := NewManager()
-			m.RegisterProcess(Restart(Named(nameRecorder(&got), "job"), Limit(1)))
+			m.RegisterProcess(Restart(Named(nameRecorder(&got), "job"), RestartLimit(1)))
 
 			require.NoError(t, m.Run(context.Background()))
 			require.Equal(t, "manager/restart/job", got)

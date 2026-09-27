@@ -24,7 +24,7 @@ func (r *httpServer) runnableName() string { return r.name }
 //
 // On context cancellation, it calls [http.Server.Shutdown] to gracefully drain
 // in-flight requests before returning, for at most [DrainTimeout], 5 seconds by
-// default. The server listens on [http.Server.Addr] unless [Listener] is set.
+// default. The server listens on [http.Server.Addr] unless [HTTPListener] is set.
 //
 //	runnable.HTTPServer(server, runnable.DrainTimeout(10*time.Second))
 func HTTPServer(server *http.Server, opts ...HTTPServerOption) Runnable {
@@ -34,27 +34,31 @@ func HTTPServer(server *http.Server, opts ...HTTPServerOption) Runnable {
 		shutdownTimeout: 5 * time.Second,
 	}
 	for _, opt := range opts {
-		opt(r)
+		opt.applyHTTPServer(r)
 	}
 	return r
 }
 
 // HTTPServerOption configures [HTTPServer].
-type HTTPServerOption func(*httpServer)
+type HTTPServerOption interface{ applyHTTPServer(*httpServer) }
+
+type httpServerOptionFunc func(*httpServer)
+
+func (f httpServerOptionFunc) applyHTTPServer(r *httpServer) { f(r) }
 
 // DrainTimeout sets the maximum time allowed for graceful shutdown of an
 // [HTTPServer]. Defaults to 5 seconds. Under a [Manager], keep it below
 // [ProcessShutdownTimeout].
 func DrainTimeout(d time.Duration) HTTPServerOption {
-	return func(r *httpServer) { r.shutdownTimeout = d }
+	return httpServerOptionFunc(func(r *httpServer) { r.shutdownTimeout = d })
 }
 
-// Listener makes an [HTTPServer] accept connections on ln instead of listening
+// HTTPListener makes an [HTTPServer] accept connections on ln instead of listening
 // on [http.Server.Addr]. Use it to listen on port 0 in tests, on a unix socket,
 // on a TLS listener, or on a socket passed by the service manager (socket
 // activation). The server takes ownership of ln and closes it on shutdown.
-func Listener(ln net.Listener) HTTPServerOption {
-	return func(r *httpServer) { r.listener = ln }
+func HTTPListener(ln net.Listener) HTTPServerOption {
+	return httpServerOptionFunc(func(r *httpServer) { r.listener = ln })
 }
 
 func (r *httpServer) Run(ctx context.Context) error {
