@@ -126,7 +126,7 @@ func TestHTTPServer(t *testing.T) {
 			Handler: http.NotFoundHandler(),
 		}
 
-		r := Named(HTTPServer(server), "api")
+		r := Named("api", HTTPServer(server))
 
 		require.Equal(t, "api", runnableName(r))
 	})

@@ -67,7 +67,7 @@ func resolveName(ctx context.Context, fallback string) string {
 // Named returns a runnable that runs r under the given name. The name is used by a
 // parent [Manager] for its log lines and errors, and when no parent assigns one,
 // it is passed to r through the context (see [NameFromContext]).
-func Named(r Runnable, name string) Runnable {
+func Named(name string, r Runnable) Runnable {
 	return &named{name: name, runnable: r}
 }
 

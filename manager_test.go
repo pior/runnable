@@ -121,10 +121,10 @@ func TestManager_Dying_Service(t *testing.T) {
 func TestManager_ShutdownTimeout(t *testing.T) {
 	synctest.Test(t, func(t *testing.T) {
 		unblock := make(chan struct{})
-		blocked := Named(Func(func(ctx context.Context) error {
+		blocked := Named("blockedRunnable", Func(func(ctx context.Context) error {
 			<-unblock
 			return nil
-		}), "blockedRunnable")
+		}))
 
 		m := NewManager(ProcessShutdownTimeout(time.Second))
 		m.RegisterProcess(blocked)
@@ -181,12 +181,12 @@ func TestManager_Nested(t *testing.T) {
 			inner.RegisterProcess(innerProc)
 
 			outer := NewManager()
-			outer.RegisterProcess(Named(inner, "inner"))
+			outer.RegisterProcess(Named("inner", inner))
 
 			errChan := make(chan error)
 			ctx, cancel := context.WithCancel(context.Background())
 
-			go func() { errChan <- Named(outer, "outer").Run(ctx) }()
+			go func() { errChan <- Named("outer", outer).Run(ctx) }()
 
 			<-innerProc.calledChan // inner process has started
 
@@ -209,12 +209,12 @@ func TestManager_Nested(t *testing.T) {
 			inner.RegisterService(innerSvc)
 
 			outer := NewManager()
-			outer.RegisterProcess(Named(inner, "inner"))
+			outer.RegisterProcess(Named("inner", inner))
 
 			errChan := make(chan error)
 			ctx, cancel := context.WithCancel(context.Background())
 
-			go func() { errChan <- Named(outer, "outer").Run(ctx) }()
+			go func() { errChan <- Named("outer", outer).Run(ctx) }()
 
 			<-innerProc.calledChan // inner process has started
 			<-innerSvc.calledChan  // inner service has started
@@ -245,12 +245,12 @@ func TestManager_Nested(t *testing.T) {
 
 			outer := NewManager()
 			outer.RegisterProcess(outerProc)
-			outer.RegisterService(Named(inner, "inner"))
+			outer.RegisterService(Named("inner", inner))
 
 			errChan := make(chan error)
 			ctx, cancel := context.WithCancel(context.Background())
 
-			go func() { errChan <- Named(outer, "outer").Run(ctx) }()
+			go func() { errChan <- Named("outer", outer).Run(ctx) }()
 
 			<-outerProc.calledChan // outer process has started
 			<-innerSvc.calledChan  // inner service has started
@@ -354,10 +354,10 @@ func TestManager_NonComparableRunnable(t *testing.T) {
 func TestManager_RunTwice(t *testing.T) {
 	synctest.Test(t, func(t *testing.T) {
 		unblock := make(chan struct{})
-		blocked := Named(Func(func(ctx context.Context) error {
+		blocked := Named("blockedRunnable", Func(func(ctx context.Context) error {
 			<-unblock
 			return nil
-		}), "blockedRunnable")
+		}))
 
 		m := NewManager(ProcessShutdownTimeout(time.Second))
 		m.RegisterProcess(blocked)
@@ -422,9 +422,9 @@ func TestManager_ErrorChain(t *testing.T) {
 			inner.RegisterProcess(&panickingRunnable{})
 
 			outer := NewManager()
-			outer.RegisterProcess(Named(inner, "inner"))
+			outer.RegisterProcess(Named("inner", inner))
 
-			err := Named(outer, "outer").Run(context.Background())
+			err := Named("outer", outer).Run(context.Background())
 			require.EqualError(t, err, "outer: inner: panickingRunnable: runnable panicked: boom")
 
 			var panicErr *PanicError
@@ -435,10 +435,10 @@ func TestManager_ErrorChain(t *testing.T) {
 	t.Run("crash and shutdown timeout", func(t *testing.T) {
 		synctest.Test(t, func(t *testing.T) {
 			unblock := make(chan struct{})
-			blocked := Named(Func(func(context.Context) error {
+			blocked := Named("blockedRunnable", Func(func(context.Context) error {
 				<-unblock
 				return nil
-			}), "blockedRunnable")
+			}))
 
 			m := NewManager(ProcessShutdownTimeout(time.Second))
 			m.RegisterProcess(blocked)
@@ -473,26 +473,26 @@ func TestManager_ErrorChain(t *testing.T) {
 func TestManager_ShutdownBudget(t *testing.T) {
 	// blockUntil returns a runnable that ignores cancellation until unblock is closed.
 	blockUntil := func(name string, unblock chan struct{}) Runnable {
-		return Named(Func(func(context.Context) error {
+		return Named(name, Func(func(context.Context) error {
 			<-unblock
 			return nil
-		}), name)
+		}))
 	}
 
 	blockOnCancel := func(name string) Runnable {
-		return Named(Func(func(ctx context.Context) error {
+		return Named(name, Func(func(ctx context.Context) error {
 			<-ctx.Done()
 			return nil
-		}), name)
+		}))
 	}
 
 	t.Run("services get their own timeout after processes stop", func(t *testing.T) {
 		synctest.Test(t, func(t *testing.T) {
-			slowProc := Named(Func(func(ctx context.Context) error {
+			slowProc := Named("slowProcess", Func(func(ctx context.Context) error {
 				<-ctx.Done()
 				time.Sleep(30 * time.Millisecond)
 				return nil
-			}), "slowProcess")
+			}))
 			unblock := make(chan struct{})
 
 			m := NewManager(ProcessShutdownTimeout(50*time.Millisecond), ServiceShutdownTimeout(100*time.Millisecond))

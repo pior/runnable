@@ -16,7 +16,7 @@ func ExampleRestart() {
 
 	// By default, Restart restarts forever, after success and after errors.
 	runs := 0
-	worker := runnable.Named(runnable.Func(func(context.Context) error {
+	worker := runnable.Named("worker", runnable.Func(func(context.Context) error {
 		runs++
 		if runs == 3 {
 			cancel()
@@ -25,7 +25,7 @@ func ExampleRestart() {
 			return errors.New("failed")
 		}
 		return nil
-	}), "worker")
+	}))
 
 	fmt.Println(runnable.Restart(worker).Run(ctx))
 
@@ -40,13 +40,13 @@ func ExampleRestart_options() {
 	runnable.SetLogger(exampleLogger())
 
 	runs := 0
-	worker := runnable.Named(runnable.Func(func(context.Context) error {
+	worker := runnable.Named("worker", runnable.Func(func(context.Context) error {
 		runs++
 		if runs <= 2 {
 			return errors.New("failed")
 		}
 		return nil
-	}), "worker")
+	}))
 
 	r := runnable.Restart(worker,
 		// Stop after 2 restarts following a successful run, errors do not count.
@@ -76,9 +76,9 @@ func ExampleRestart_options() {
 func ExampleRestart_errorLimit() {
 	runnable.SetLogger(exampleLogger())
 
-	connect := runnable.Named(runnable.Func(func(context.Context) error {
+	connect := runnable.Named("connect", runnable.Func(func(context.Context) error {
 		return errors.New("connection refused")
-	}), "connect")
+	}))
 
 	fmt.Println(runnable.Restart(connect, runnable.RestartErrorLimit(3)).Run(context.Background()))
 

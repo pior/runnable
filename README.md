@@ -53,7 +53,7 @@ For nested managers, the inner sum must stay below the timeout of the phase the 
 
 ### Names
 
-Each runnable in a manager runs with its full name in the context, such as `manager/restart/JobQueue`, used in log lines and errors. Read it with `NameFromContext(ctx)`, and set it with `Named(r, "api")`.
+Each runnable in a manager runs with its full name in the context, such as `manager/restart/JobQueue`, used in log lines and errors. Read it with `NameFromContext(ctx)`, and set it with `Named("api", r)`.
 
 <details>
   <summary>Example logs</summary>
@@ -99,7 +99,7 @@ Wrappers compose behavior around a `Runnable`:
 | `Signal(r, signals...)` | Cancel context on OS signals |
 | `Closer(c)` | Call `Close()` on context cancellation, also `CloserErr`, `CloserCtx`, `CloserCtxErr` |
 | `Func(fn)` | Adapt a `func(context.Context) error` to `Runnable` |
-| `Named(r, name)` | Give a runnable a name, readable with `NameFromContext` |
+| `Named(name, r)` | Give a runnable a name, readable with `NameFromContext` |
 
 ## License
 

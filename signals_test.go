@@ -14,7 +14,7 @@ func TestSignal(t *testing.T) {
 	// sendSignal returns a runnable that sends sig to its own process, then waits
 	// for the cancellation. Signal listens before running it.
 	sendSignal := func(sig os.Signal) Runnable {
-		return Named(Func(func(ctx context.Context) error {
+		return Named("app", Func(func(ctx context.Context) error {
 			p, err := os.FindProcess(os.Getpid())
 			if err != nil {
 				return err
@@ -24,7 +24,7 @@ func TestSignal(t *testing.T) {
 			}
 			<-ctx.Done()
 			return ctx.Err()
-		}), "app")
+		}))
 	}
 
 	t.Run("cancels the context on signal", func(t *testing.T) {
