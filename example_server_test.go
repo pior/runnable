@@ -82,11 +82,6 @@ func ExampleHTTPServer_options() {
 }
 
 func ExampleHTTPServer_manager() {
-	// The server logs concurrently with the manager, keep the logs out of the
-	// example output.
-	runnable.SetLogger(slog.New(slog.DiscardHandler))
-	defer runnable.SetLogger(nil)
-
 	server := &http.Server{
 		Addr:    "127.0.0.1:0",
 		Handler: http.NotFoundHandler(),
@@ -104,6 +99,15 @@ func ExampleHTTPServer_manager() {
 	fmt.Println(m.Run(ctx))
 
 	// Output:
+	// level=INFO msg="manager/Cache: started"
+	// level=INFO msg="manager/httpserver: started"
+	// level=INFO msg="manager/httpserver: listening" addr=127.0.0.1:0
+	// level=INFO msg="manager: starting shutdown" reason="context cancelled"
+	// level=INFO msg="manager/httpserver: shutting down"
+	// level=INFO msg="manager/httpserver: stopped"
+	// level=INFO msg="manager/httpserver: stopped"
+	// level=INFO msg="manager/Cache: stopped"
+	// level=INFO msg="manager: shutdown complete"
 	// <nil>
 }
 
