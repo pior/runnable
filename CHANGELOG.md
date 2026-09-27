@@ -14,7 +14,7 @@ This release is breaking, under a minor version. The module path stays
 | `Register`/`RegisterService` return the registry | return nothing |
 | Manager error is one flattened string | `errors.Join` chain, `%w` wrapped per runnable |
 | `"X is still running"` text | `ErrShutdownTimeout` sentinel |
-| `Manager().ShutdownTimeout(d)`, 10s per phase | `NewManager(ProcessShutdownTimeout(d), ServiceShutdownTimeout(d))`, 15s each |
+| `Manager().ShutdownTimeout(d)`, 10s per phase | `NewManager(ProcessShutdownTimeout(d), ServiceShutdownTimeout(d))`, 15s and 10s |
 | `PanicError{value}` unexported | `PanicError{Value, Stack}`, `%+v` prints stack |
 | HTTPServer default drain 30s | 5s |
 | Manager log lines and error messages | new format, names from context |

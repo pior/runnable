@@ -39,17 +39,17 @@ type Manager struct {
 // and errors, is "manager" unless a parent [Manager] or [Named] assigns one.
 //
 // The shutdown phases are bounded by [ProcessShutdownTimeout] and
-// [ServiceShutdownTimeout]. The worst case shutdown is their sum, 30 seconds by
+// [ServiceShutdownTimeout]. The worst case shutdown is their sum, 25 seconds by
 // default. It must stay below a platform grace period such as Kubernetes
-// terminationGracePeriodSeconds to leave room for the process to exit. The
-// Kubernetes default is also 30 seconds, so raise it, or lower the timeouts. For nested managers, the inner sum must stay below the
+// terminationGracePeriodSeconds, 30 seconds by default, to leave room for the
+// process to exit. For nested managers, the inner sum must stay below the
 // timeout of the phase the inner manager is registered in.
 //
 //	runnable.NewManager(runnable.ProcessShutdownTimeout(40*time.Second))
 func NewManager(opts ...ManagerOption) *Manager {
 	m := &Manager{
 		processTimeout: 15 * time.Second,
-		serviceTimeout: 15 * time.Second,
+		serviceTimeout: 10 * time.Second,
 	}
 	for _, opt := range opts {
 		opt.applyManager(m)
@@ -71,7 +71,7 @@ func ProcessShutdownTimeout(d time.Duration) ManagerOption {
 }
 
 // ServiceShutdownTimeout sets how long services have to stop, from when they
-// are cancelled after the processes stopped. Defaults to 15 seconds.
+// are cancelled after the processes stopped. Defaults to 10 seconds.
 func ServiceShutdownTimeout(d time.Duration) ManagerOption {
 	return managerOptionFunc(func(m *Manager) { m.serviceTimeout = d })
 }

@@ -555,7 +555,7 @@ func TestManager_ShutdownBudget(t *testing.T) {
 
 			start := time.Now()
 			err := m.Run(cancelledContext())
-			require.Equal(t, "30s", time.Since(start).String())
+			require.Equal(t, "25s", time.Since(start).String())
 			require.ErrorIs(t, err, ErrShutdownTimeout)
 
 			close(unblock) // let the goroutines exit for synctest cleanup
