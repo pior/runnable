@@ -6,7 +6,7 @@ Go library for managing the lifecycle of long-running processes.
 
 - **One abstraction.** Everything is a `Runnable`: `Run(context.Context) error`. Wrappers compose behavior around it; new features are wrappers, not new interfaces.
 - **Small, visible API.** Everything configurable must show on pkg.go.dev: go/doc hides unexported types and their methods.
-- **Built for main().** `Run`, `RunFunc`, `RunGroup` are main helpers: they handle signals and call `log.Fatal`. Library code must never exit.
+- **Built for main().** `Run`, `RunFunc`, `RunGroup` are main helpers: they handle signals, and on error log it and exit with status 1. Library code must never exit.
 
 ## Invariants
 
