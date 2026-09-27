@@ -51,6 +51,7 @@ func (t *CleanupTask) Run(_ context.Context) error {
 	return nil
 }
 
+// The README "Example logs" block copies the output of this example, keep them in sync.
 func Example() {
 	runnable.SetLogger(exampleLogger())
 
