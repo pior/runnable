@@ -4,13 +4,20 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"log/slog"
 	"os"
 	"syscall"
 	"time"
 
 	"github.com/pior/runnable"
 )
+
+// Metrics is a service that exports metrics.
+type Metrics struct{}
+
+func (*Metrics) Run(ctx context.Context) error {
+	<-ctx.Done()
+	return nil
+}
 
 func ExampleFunc() {
 	hello := runnable.Func(func(context.Context) error {
@@ -56,8 +63,6 @@ func ExampleFunc_worker() {
 }
 
 func ExampleNamed() {
-	runnable.SetLogger(exampleLogger())
-
 	// A function is named after its Go symbol, Named gives it a readable name
 	// for log lines and errors.
 	api := runnable.Named("api", runnable.Func(func(context.Context) error {
@@ -78,10 +83,9 @@ func ExampleNamed() {
 }
 
 func ExampleNameFromContext() {
-	runnable.SetLogger(slog.New(slog.DiscardHandler))
-
+	var name string
 	job := runnable.Func(func(ctx context.Context) error {
-		fmt.Println(runnable.NameFromContext(ctx))
+		name = runnable.NameFromContext(ctx)
 		return nil
 	})
 
@@ -89,8 +93,13 @@ func ExampleNameFromContext() {
 	m.RegisterProcess(runnable.Named("job", job))
 
 	_ = runnable.Named("app", m).Run(context.Background())
+	fmt.Println(name)
 
 	// Output:
+	// level=INFO msg="app/job: started"
+	// level=INFO msg="app/job: stopped"
+	// level=INFO msg="app: starting shutdown" reason="job completed"
+	// level=INFO msg="app: shutdown complete"
 	// app/job
 }
 
@@ -106,8 +115,6 @@ func sendSignal(sig os.Signal) runnable.Runnable {
 }
 
 func ExampleSignal() {
-	runnable.SetLogger(exampleLogger())
-
 	// Signal cancels the context on SIGINT or SIGTERM. Run already does it.
 	r := runnable.Signal(sendSignal(syscall.SIGTERM))
 
@@ -119,8 +126,6 @@ func ExampleSignal() {
 }
 
 func ExampleSignal_signals() {
-	runnable.SetLogger(exampleLogger())
-
 	// Cancel the context on SIGHUP only.
 	r := runnable.Signal(sendSignal(syscall.SIGHUP), syscall.SIGHUP)
 
@@ -173,12 +178,10 @@ func ExampleNoop() {
 }
 
 func ExampleNoop_servicesOnly() {
-	runnable.SetLogger(exampleLogger())
-
 	// A manager shuts down when any runnable returns. Noop is a process that
 	// never does, so a manager of services runs until it is cancelled.
 	m := runnable.NewManager()
-	m.RegisterService(&JobQueue{})
+	m.RegisterService(&Metrics{})
 	m.RegisterProcess(runnable.Named("idle", runnable.Noop()))
 
 	ctx, cancel := context.WithCancel(context.Background())
@@ -187,11 +190,11 @@ func ExampleNoop_servicesOnly() {
 	fmt.Println(m.Run(ctx))
 
 	// Output:
-	// level=INFO msg="manager/JobQueue: started"
+	// level=INFO msg="manager/Metrics: started"
 	// level=INFO msg="manager/idle: started"
 	// level=INFO msg="manager: starting shutdown" reason="context cancelled"
 	// level=INFO msg="manager/idle: stopped"
-	// level=INFO msg="manager/JobQueue: stopped"
+	// level=INFO msg="manager/Metrics: stopped"
 	// level=INFO msg="manager: shutdown complete"
 	// <nil>
 }

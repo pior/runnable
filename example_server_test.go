@@ -12,9 +12,15 @@ import (
 	"github.com/pior/runnable"
 )
 
-func ExampleHTTPServer() {
-	runnable.SetLogger(exampleLogger())
+// Cache is a service that the server depends on.
+type Cache struct{}
 
+func (*Cache) Run(ctx context.Context) error {
+	<-ctx.Done()
+	return nil
+}
+
+func ExampleHTTPServer() {
 	server := &http.Server{
 		Addr:    "127.0.0.1:0",
 		Handler: http.NotFoundHandler(),
@@ -35,6 +41,7 @@ func ExampleHTTPServer() {
 func ExampleHTTPServer_options() {
 	// The listening address is random, keep it out of the example output.
 	runnable.SetLogger(slog.New(slog.DiscardHandler))
+	defer runnable.SetLogger(nil)
 
 	// Listener serves on a listener opened by the caller: port 0 in tests, a unix
 	// socket, a TLS listener, or a socket passed by the service manager.
@@ -75,7 +82,10 @@ func ExampleHTTPServer_options() {
 }
 
 func ExampleHTTPServer_manager() {
+	// The server logs concurrently with the manager, keep the logs out of the
+	// example output.
 	runnable.SetLogger(slog.New(slog.DiscardHandler))
+	defer runnable.SetLogger(nil)
 
 	server := &http.Server{
 		Addr:    "127.0.0.1:0",
@@ -85,7 +95,7 @@ func ExampleHTTPServer_manager() {
 	// The manager stops the server first, draining in-flight requests, then the
 	// job queue it depends on.
 	m := runnable.NewManager()
-	m.RegisterService(&JobQueue{})
+	m.RegisterService(&Cache{})
 	m.RegisterProcess(runnable.HTTPServer(server))
 
 	ctx, cancel := context.WithCancel(context.Background())
@@ -98,8 +108,6 @@ func ExampleHTTPServer_manager() {
 }
 
 func ExampleHTTPServer_error() {
-	runnable.SetLogger(exampleLogger())
-
 	server := &http.Server{
 		Addr:    "INVALID",
 		Handler: http.NotFoundHandler(),

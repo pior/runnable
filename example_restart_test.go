@@ -10,8 +10,6 @@ import (
 )
 
 func ExampleRestart() {
-	runnable.SetLogger(exampleLogger())
-
 	ctx, cancel := context.WithCancel(context.Background())
 
 	// By default, Restart restarts forever, after success and after errors.
@@ -37,8 +35,6 @@ func ExampleRestart() {
 }
 
 func ExampleRestart_options() {
-	runnable.SetLogger(exampleLogger())
-
 	runs := 0
 	worker := runnable.Named("worker", runnable.Func(func(context.Context) error {
 		runs++
@@ -74,8 +70,6 @@ func ExampleRestart_options() {
 }
 
 func ExampleRestart_errorLimit() {
-	runnable.SetLogger(exampleLogger())
-
 	connect := runnable.Named("connect", runnable.Func(func(context.Context) error {
 		return errors.New("connection refused")
 	}))
