@@ -122,3 +122,30 @@ func ExampleHTTPServer_error() {
 	// Output:
 	// listen tcp: address INVALID: missing port in address
 }
+
+// GreeterServer stands in for a *grpc.Server, to keep grpc out of the examples.
+type GreeterServer struct{ stopped chan struct{} }
+
+func (s *GreeterServer) Serve(ln net.Listener) error {
+	<-s.stopped
+	return ln.Close()
+}
+
+func (s *GreeterServer) GracefulStop() { close(s.stopped) }
+
+func (s *GreeterServer) Stop() {}
+
+func ExampleGRPCServer() {
+	server := &GreeterServer{stopped: make(chan struct{})} // grpc.NewServer()
+
+	ctx, cancel := context.WithCancel(context.Background())
+	time.AfterFunc(100*time.Millisecond, cancel)
+
+	fmt.Println(runnable.GRPCServer("127.0.0.1:18081", server).Run(ctx))
+
+	// Output:
+	// level=INFO msg="grpcserver: listening" addr=127.0.0.1:18081
+	// level=INFO msg="grpcserver: draining" timeout=5s
+	// level=INFO msg="grpcserver: drained"
+	// <nil>
+}

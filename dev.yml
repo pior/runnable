@@ -20,6 +20,9 @@ up:
 commands:
   test: go test -cover -race ./...
   lint: .devbuddy/golangci-lint run
+  integration:
+    desc: Test the integration modules, such as a real gRPC server
+    run: cd integration/grpc && go test -race ./...
 
 open:
   devbuddy: https://github.com/devbuddy/devbuddy/blob/master/docs/Config.md#config-devyml
