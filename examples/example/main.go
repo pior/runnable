@@ -29,7 +29,11 @@ func main() {
 		runnable.Every(3*time.Second),
 	)
 
-	g := runnable.NewManager()
+	// Shutdown takes at most 20s + 10s, below a 40s Kubernetes grace period.
+	g := runnable.NewManager(
+		runnable.ProcessShutdownTimeout(20*time.Second),
+		runnable.ServiceShutdownTimeout(10*time.Second),
+	)
 	g.RegisterService(jobs)
 	g.RegisterProcess(serverRunner)
 	g.RegisterProcess(monitor)

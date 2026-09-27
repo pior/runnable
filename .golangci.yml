@@ -416,6 +416,9 @@ linters:
       - text: 'unused-parameter'
         path: '_test\.go'
         linters: [ revive ]
+      # Example helper types print to show what happens in the example output.
+      - path: 'example_.*_test\.go'
+        linters: [ forbidigo ]
       # RunnableFunc and RunnableError are established API names.
       - text: 'stutters'
         linters: [ revive ]

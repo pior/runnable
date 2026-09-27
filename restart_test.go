@@ -165,33 +165,3 @@ func TestRestart(t *testing.T) {
 		})
 	})
 }
-
-func ExampleRestart() {
-	ctx, cancel := initializeForExample()
-	defer cancel()
-
-	worker := newDyingRunnable()
-	r := Restart(worker, RestartErrorLimit(3))
-	_ = r.Run(ctx)
-
-	// Output:
-	// level=INFO msg="restart/dyingRunnable: starting" restart=0 errors=0
-	// level=INFO msg="restart/dyingRunnable: starting" restart=1 errors=1
-	// level=INFO msg="restart/dyingRunnable: starting" restart=2 errors=2
-	// level=INFO msg="restart/dyingRunnable: not restarting" reason="error limit" limit=3
-}
-
-func ExampleRestart_worker() {
-	ctx, cancel := initializeForExample()
-	defer cancel()
-
-	worker := newCounterRunnable()
-	r := Restart(worker, RestartLimit(2), RestartDelay(time.Millisecond))
-	_ = r.Run(ctx)
-
-	// Output:
-	// level=INFO msg="restart/counter: starting" restart=0 errors=0
-	// level=INFO msg="restart/counter: starting" restart=1 errors=0
-	// level=INFO msg="restart/counter: starting" restart=2 errors=0
-	// level=INFO msg="restart/counter: not restarting" reason="restart limit" limit=2
-}
