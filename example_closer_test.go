@@ -43,8 +43,6 @@ func ExampleCloser() {
 }
 
 func ExampleCloser_manager() {
-	runnable.SetLogger(exampleLogger())
-
 	// As a service, the pool is closed after all processes stopped.
 	m := runnable.NewManager()
 	m.RegisterService(runnable.Closer(Pool{}))

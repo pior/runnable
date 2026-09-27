@@ -3,25 +3,10 @@ package runnable_test
 import (
 	"context"
 	"fmt"
-	"log/slog"
-	"os"
 	"time"
 
 	"github.com/pior/runnable"
 )
-
-// exampleLogger returns a text logger writing to stdout without timestamps,
-// suitable for deterministic testable examples.
-func exampleLogger() *slog.Logger {
-	return slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{
-		ReplaceAttr: func(_ []string, a slog.Attr) slog.Attr {
-			if a.Key == slog.TimeKey {
-				return slog.Attr{}
-			}
-			return a
-		},
-	}))
-}
 
 // JobQueue is a long-running service that processes background jobs.
 type JobQueue struct{}
@@ -53,8 +38,6 @@ func (t *CleanupTask) Run(_ context.Context) error {
 
 // The README "Example logs" block copies the output of this example, keep them in sync.
 func Example() {
-	runnable.SetLogger(exampleLogger())
-
 	jobs := &JobQueue{}
 	done := make(chan struct{})
 	cleanup := &CleanupTask{jobs: jobs, done: done}
