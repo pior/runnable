@@ -22,7 +22,7 @@ func (*Cache) Run(ctx context.Context) error {
 
 func ExampleHTTPServer() {
 	server := &http.Server{
-		Addr:    "127.0.0.1:0",
+		Addr:    "127.0.0.1:18080",
 		Handler: http.NotFoundHandler(),
 	}
 
@@ -32,9 +32,9 @@ func ExampleHTTPServer() {
 	fmt.Println(runnable.HTTPServer(server).Run(ctx))
 
 	// Output:
-	// level=INFO msg="httpserver: listening" addr=127.0.0.1:0
-	// level=INFO msg="httpserver: shutting down"
-	// level=INFO msg="httpserver: stopped"
+	// level=INFO msg="httpserver: listening" addr=127.0.0.1:18080
+	// level=INFO msg="httpserver: draining" timeout=5s
+	// level=INFO msg="httpserver: drained"
 	// <nil>
 }
 
@@ -83,7 +83,7 @@ func ExampleHTTPServer_options() {
 
 func ExampleHTTPServer_manager() {
 	server := &http.Server{
-		Addr:    "127.0.0.1:0",
+		Addr:    "127.0.0.1:18080",
 		Handler: http.NotFoundHandler(),
 	}
 
@@ -101,10 +101,10 @@ func ExampleHTTPServer_manager() {
 	// Output:
 	// level=INFO msg="manager/Cache: started"
 	// level=INFO msg="manager/httpserver: started"
-	// level=INFO msg="manager/httpserver: listening" addr=127.0.0.1:0
+	// level=INFO msg="manager/httpserver: listening" addr=127.0.0.1:18080
 	// level=INFO msg="manager: starting shutdown" reason="context cancelled"
-	// level=INFO msg="manager/httpserver: shutting down"
-	// level=INFO msg="manager/httpserver: stopped"
+	// level=INFO msg="manager/httpserver: draining" timeout=5s
+	// level=INFO msg="manager/httpserver: drained"
 	// level=INFO msg="manager/httpserver: stopped"
 	// level=INFO msg="manager/Cache: stopped"
 	// level=INFO msg="manager: shutdown complete"
@@ -120,7 +120,5 @@ func ExampleHTTPServer_error() {
 	fmt.Println(runnable.HTTPServer(server).Run(context.Background()))
 
 	// Output:
-	// level=INFO msg="httpserver: listening" addr=INVALID
-	// level=INFO msg="httpserver: stopped with error" error="listen tcp: address INVALID: missing port in address"
 	// listen tcp: address INVALID: missing port in address
 }
