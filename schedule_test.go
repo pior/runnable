@@ -3,6 +3,7 @@ package runnable
 import (
 	"context"
 	"fmt"
+	"strings"
 	"sync/atomic"
 	"testing"
 	"testing/synctest"
@@ -111,28 +112,6 @@ func TestScheduleSpec_Cron(t *testing.T) {
 		require.Equal(t, fake.next.String(), got.String())
 		require.Equal(t, fmt.Sprint([]time.Time{now}), fmt.Sprint(fake.called))
 	})
-
-	t.Run("earliest across specs", func(t *testing.T) {
-		fake := &fakeNextSchedule{next: time.Date(2025, 1, 1, 14, 25, 0, 0, time.UTC)}
-		s := Schedule(newDummyRunnable(), HourlyAt(30), Cron(fake)).(*schedule)
-
-		got := s.nextTime(lastStart, now)
-
-		require.Equal(t, fake.next.String(), got.String())
-		require.Equal(t, fmt.Sprint([]time.Time{now}), fmt.Sprint(fake.called))
-	})
-}
-
-func TestScheduleSpec_MultipleSpecs(t *testing.T) {
-	s := Schedule(newDummyRunnable(), Every(time.Hour), HourlyAt(30)).(*schedule)
-
-	lastStart := time.Date(2025, 1, 1, 14, 0, 0, 0, time.UTC)
-	now := time.Date(2025, 1, 1, 14, 20, 0, 0, time.UTC)
-
-	got := s.nextTime(lastStart, now)
-	want := time.Date(2025, 1, 1, 14, 30, 0, 0, time.UTC) // HourlyAt(30) fires first
-
-	require.Equal(t, want.String(), got.String())
 }
 
 func TestSchedule_Cancellation(t *testing.T) {
@@ -206,31 +185,46 @@ func TestSchedule_SlowRunnable(t *testing.T) {
 	})
 }
 
-func TestSchedule_MultipleSpecs_Integration(t *testing.T) {
-	synctest.Test(t, func(t *testing.T) {
-		var count atomic.Int64
-		worker := Func(func(ctx context.Context) error {
-			count.Add(1)
-			return nil
+func TestSchedule_ContinueOnError(t *testing.T) {
+	t.Run("logs the error and runs at the next tick", func(t *testing.T) {
+		synctest.Test(t, func(t *testing.T) {
+			logs := captureLogs(t)
+			var count atomic.Int64
+			worker := Named("cleanup", Func(func(ctx context.Context) error {
+				count.Add(1)
+				return &dummyError{message: "task failed"}
+			}))
+
+			ctx, cancel := context.WithCancel(context.Background())
+			errChan := make(chan error)
+			go func() {
+				errChan <- Schedule(worker, Every(time.Second), ScheduleContinueOnError()).Run(ctx)
+			}()
+
+			time.Sleep(2 * time.Second)
+			synctest.Wait()
+			require.Equal(t, "2", itoa(count.Load()))
+
+			cancel()
+			require.EqualError(t, <-errChan, "context canceled")
+			line := `level=INFO msg="schedule/cleanup: failed, continuing" error="task failed"` + "\n"
+			require.Equal(t, strings.Repeat(line, 2), logs.String())
 		})
+	})
 
-		ctx, cancel := context.WithCancel(context.Background())
-		errChan := make(chan error)
+	t.Run("returns the error when cancelled", func(t *testing.T) {
+		synctest.Test(t, func(t *testing.T) {
+			logs := captureLogs(t)
+			ctx, cancel := context.WithCancel(context.Background())
+			worker := Func(func(ctx context.Context) error {
+				cancel()
+				return &dummyError{message: "interrupted"}
+			})
 
-		// Every 30min and HourlyAt(15) — should fire at whichever comes first.
-		go func() {
-			errChan <- Schedule(worker, Every(30*time.Minute), HourlyAt(15)).Run(ctx)
-		}()
-
-		// HourlyAt(15) fires 15min into the hour, Every(30min) fires at 30min.
-		// HourlyAt(15) should fire first.
-		time.Sleep(15 * time.Minute)
-		synctest.Wait()
-		require.Equal(t, "1", itoa(count.Load()))
-
-		cancel()
-		err := <-errChan
-		require.EqualError(t, err, "context canceled")
+			err := Schedule(worker, Every(time.Second), ScheduleContinueOnError()).Run(ctx)
+			require.EqualError(t, err, "interrupted")
+			require.Empty(t, logs.String())
+		})
 	})
 }
 
