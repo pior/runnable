@@ -27,39 +27,48 @@ func (r *httpServer) runnableName() string { return r.name }
 // default. The server listens on [http.Server.Addr] unless [Listener] is set.
 //
 //	runnable.HTTPServer(server, runnable.DrainTimeout(10*time.Second))
-func HTTPServer(server *http.Server, opts ...HTTPServerOption) Runnable {
+func HTTPServer(server *http.Server, opts ...ServerOption) Runnable {
 	r := &httpServer{
 		name:            "httpserver",
 		server:          server,
 		shutdownTimeout: 5 * time.Second,
 	}
 	for _, opt := range opts {
-		opt.applyHTTPServer(r)
+		opt.applyServer(r)
 	}
 	return r
 }
 
-// HTTPServerOption configures [HTTPServer].
-type HTTPServerOption interface{ applyHTTPServer(*httpServer) }
+// ServerOption configures [HTTPServer], and any server wrapper added later.
+type ServerOption interface{ applyServer(*httpServer) }
 
-type httpServerOptionFunc func(*httpServer)
-
-func (f httpServerOptionFunc) applyHTTPServer(r *httpServer) { f(r) }
+var (
+	_ ServerOption = drainTimeout(0)
+	_ ServerOption = listener{}
+)
 
 // DrainTimeout sets the maximum time allowed for graceful shutdown of an
 // [HTTPServer]. Defaults to 5 seconds. Under a [Manager], keep it below
 // [ProcessShutdownTimeout].
-func DrainTimeout(d time.Duration) HTTPServerOption {
-	return httpServerOptionFunc(func(r *httpServer) { r.shutdownTimeout = d })
+func DrainTimeout(d time.Duration) ServerOption {
+	return drainTimeout(d)
 }
+
+type drainTimeout time.Duration
+
+func (d drainTimeout) applyServer(r *httpServer) { r.shutdownTimeout = time.Duration(d) }
 
 // Listener makes an [HTTPServer] accept connections on ln instead of listening
 // on [http.Server.Addr]. Use it to listen on port 0 in tests, on a unix socket,
 // on a TLS listener, or on a socket passed by the service manager (socket
 // activation). The server takes ownership of ln and closes it on shutdown.
-func Listener(ln net.Listener) HTTPServerOption {
-	return httpServerOptionFunc(func(r *httpServer) { r.listener = ln })
+func Listener(ln net.Listener) ServerOption {
+	return listener{ln}
 }
+
+type listener struct{ ln net.Listener }
+
+func (l listener) applyServer(r *httpServer) { r.listener = l.ln }
 
 func (r *httpServer) Run(ctx context.Context) error {
 	name := resolveName(ctx, r.name)

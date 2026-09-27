@@ -20,7 +20,7 @@ Go library for managing the lifecycle of long-running processes.
 ## API design rules
 
 - **Configuration is functional options.** Option types are interfaces with an unexported method (`RestartOption{ applyRestart }`), so one option can serve several wrappers. No fluent setters.
-- **Option names: share the meaning, or prefix the name.** A name is shared when it means the same thing on every wrapper that takes it (`DrainTimeout`, `Listener`): a later wrapper reuses it by returning a type that satisfies both option interfaces. A name is prefixed when its meaning belongs to one wrapper (`RestartLimit`, `RestartDelay`), so it never blocks another wrapper from using the plain word differently.
+- **Option names: share the meaning, or prefix the name.** A name is shared when it means the same thing on every wrapper that takes it (`DrainTimeout`, `Listener`): they return `ServerOption`, taken by every server wrapper. A name is prefixed when its meaning belongs to one wrapper (`RestartLimit`, `RestartDelay`), so it never blocks another wrapper from using the plain word differently.
 - **Argument order:** a function or runnable literal goes last when no variadic argument must (`Named(name, r)`, like `t.Run(name, fn)`). Variadic options and specs always go last (`Restart(r, opts...)`).
 - **Constructors return `Runnable`** unless the returned type has exported methods callers need (`*Manager`).
 
