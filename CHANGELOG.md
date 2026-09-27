@@ -34,6 +34,7 @@ This release is breaking, under a minor version. The module path stays
 - `ErrShutdownTimeout`: sentinel for runnables still running when the shutdown budget expires.
 - `HTTPServer(s, Listener(ln))`: serve on a provided `net.Listener`.
 - `ScheduleContinueOnError()`: `Schedule` logs a failed run and runs again at the next tick, instead of stopping.
+- `ServerOption`: `DrainTimeout` and `Listener`, shared by the server wrappers.
 - `Cron(s)`: schedule spec for any type with a `Next(time.Time) time.Time` method, such as robfig/cron schedules.
 
 ### Fixed
