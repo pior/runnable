@@ -38,15 +38,18 @@ A `Manager` is itself a `Runnable`, so managers can be nested for independent sh
 
 ### Shutdown budget
 
-`ShutdownTimeout` (default 30s) is the total budget for both shutdown phases. Processes get half of it, services get the rest: at least half, more when processes stop early. Runnables still running when their phase ends are reported with `ErrShutdownTimeout`.
+Each shutdown phase has its own timeout: `ProcessShutdownTimeout` (default 20s) starts with the shutdown, `ServiceShutdownTimeout` (default 5s) starts when services are cancelled. Runnables still running when their phase ends are reported with `ErrShutdownTimeout`.
 
-It maps to a platform grace period such as Kubernetes `terminationGracePeriodSeconds`, which must exceed it to leave room for the process to exit. For example, with a 30s grace period:
+The worst case is the sum, 25s by default. Keep it below the platform grace period, such as Kubernetes `terminationGracePeriodSeconds` (default 30s), to leave room for the process to exit. For example, with a 60s grace period:
 
 ```go
-m := runnable.NewManager().ShutdownTimeout(25 * time.Second)
+m := runnable.NewManager(
+    runnable.ProcessShutdownTimeout(45*time.Second),
+    runnable.ServiceShutdownTimeout(10*time.Second),
+)
 ```
 
-For nested managers, the inner budget must be smaller than the outer one. `HTTPServer` drains for 5s by default, which must stay below the process phase of the budget.
+For nested managers, the inner sum must stay below the timeout of the phase the inner manager runs in. `HTTPServer` drains for 5s by default, which must stay below `ProcessShutdownTimeout`.
 
 ### Names
 

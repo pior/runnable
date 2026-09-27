@@ -19,7 +19,7 @@ import (
 // Each runnable is wrapped with [Recover] to catch panics. Errors from runnables are
 // collected, except [context.Canceled] which is ignored. Run returns them joined with
 // [errors.Join], each wrapped with the runnable name, so they can be inspected with
-// [errors.Is] and [errors.As]. A runnable still running when the shutdown timeout
+// [errors.Is] and [errors.As]. A runnable still running when its phase timeout
 // expires is reported with [ErrShutdownTimeout]. A manager is itself a [Runnable],
 // so managers can be nested for independent shutdown ordering.
 //
@@ -29,31 +29,51 @@ import (
 //
 // Registering the same runnable twice, or as both a process and a service, panics.
 type Manager struct {
-	processes       []entry
-	services        []entry
-	shutdownTimeout time.Duration
+	processes      []entry
+	services       []entry
+	processTimeout time.Duration
+	serviceTimeout time.Duration
 }
 
 // NewManager returns a new [Manager]. Its name, used as a prefix in log messages
 // and errors, is "manager" unless a parent [Manager] or [Named] assigns one.
-func NewManager() *Manager {
-	return &Manager{shutdownTimeout: 30 * time.Second}
+//
+// The shutdown phases are bounded by [ProcessShutdownTimeout] and
+// [ServiceShutdownTimeout]. The worst case shutdown is their sum, 25 seconds by
+// default. It must stay below a platform grace period such as Kubernetes
+// terminationGracePeriodSeconds, 30 seconds by default, to leave room for the
+// process to exit. For nested managers, the inner sum must stay below the
+// timeout of the phase the inner manager is registered in.
+//
+//	runnable.NewManager(runnable.ProcessShutdownTimeout(40*time.Second))
+func NewManager(opts ...ManagerOption) *Manager {
+	m := &Manager{
+		processTimeout: 20 * time.Second,
+		serviceTimeout: 5 * time.Second,
+	}
+	for _, opt := range opts {
+		opt(m)
+	}
+	return m
+}
+
+// ManagerOption configures [NewManager].
+type ManagerOption func(*Manager)
+
+// ProcessShutdownTimeout sets how long processes have to stop, from the start
+// of the shutdown. Defaults to 20 seconds, enough for the default drain of
+// [HTTPServer].
+func ProcessShutdownTimeout(d time.Duration) ManagerOption {
+	return func(m *Manager) { m.processTimeout = d }
+}
+
+// ServiceShutdownTimeout sets how long services have to stop, from when they
+// are cancelled after the processes stopped. Defaults to 5 seconds.
+func ServiceShutdownTimeout(d time.Duration) ManagerOption {
+	return func(m *Manager) { m.serviceTimeout = d }
 }
 
 func (m *Manager) runnableName() string { return "manager" }
-
-// ShutdownTimeout sets the total time for both shutdown phases. Processes get
-// half of it, services get the rest: at least half, more when processes stop
-// early. Defaults to 30 seconds.
-//
-// It maps to a platform grace period such as Kubernetes
-// terminationGracePeriodSeconds, which must exceed this value to leave room for
-// the process to exit. For nested managers, the inner timeout must be smaller
-// than the outer one.
-func (m *Manager) ShutdownTimeout(dur time.Duration) *Manager {
-	m.shutdownTimeout = dur
-	return m
-}
 
 // ManagerRegistry is the interface for registering runnables with a [Manager].
 // It lets helpers register runnables without being able to run the manager.
@@ -185,19 +205,13 @@ func (m *Manager) Run(ctx context.Context) error {
 		logger.Info(prefix+": starting shutdown", "reason", completionReason(e, c.err))
 	}
 
-	// One budget for both phases: processes get half, services get the rest.
-	deadline, cancelDeadline := context.WithTimeout(context.Background(), m.shutdownTimeout)
-	defer cancelDeadline()
-	procDeadline, cancelProcDeadline := context.WithTimeout(deadline, m.shutdownTimeout/2)
-	defer cancelProcDeadline()
-
 	// Phase 1: stop processes
 	procCancel()
-	waitPhase(prefix, m.processes, procDone, procDeadline.Done(), &errs)
+	waitPhase(prefix, m.processes, procDone, m.processTimeout, &errs)
 
 	// Phase 2: stop services
 	svcCancel()
-	waitPhase(prefix, m.services, svcDone, deadline.Done(), &errs)
+	waitPhase(prefix, m.services, svcDone, m.serviceTimeout, &errs)
 
 	logger.Info(prefix + ": shutdown complete")
 
@@ -219,21 +233,24 @@ func markStopped(prefix string, entries []entry, c completed) entry {
 	return e
 }
 
-// waitPhase waits for all running entries to complete, or for the deadline.
+// waitPhase waits for all running entries to complete, or for the timeout.
 func waitPhase(
 	prefix string,
 	entries []entry,
 	done <-chan completed,
-	deadline <-chan struct{},
+	timeout time.Duration,
 	errs *[]error,
 ) {
+	timer := time.NewTimer(timeout)
+	defer timer.Stop()
+
 	running := func(e entry) bool { return !e.stopped }
 	for slices.ContainsFunc(entries, running) {
 		select {
 		case c := <-done:
 			e := markStopped(prefix, entries, c)
 			collectError(errs, e, c.err)
-		case <-deadline:
+		case <-timer.C:
 			for _, e := range entries {
 				if running(e) {
 					logger.Info(prefix + "/" + e.name + ": still running")

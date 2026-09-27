@@ -43,8 +43,8 @@ func HTTPServer(server *http.Server, opts ...HTTPServerOption) Runnable {
 type HTTPServerOption func(*httpServer)
 
 // DrainTimeout sets the maximum time allowed for graceful shutdown of an
-// [HTTPServer]. Defaults to 5 seconds. Under a [Manager], keep it below the
-// process phase of the manager's shutdown budget.
+// [HTTPServer]. Defaults to 5 seconds. Under a [Manager], keep it below
+// [ProcessShutdownTimeout].
 func DrainTimeout(d time.Duration) HTTPServerOption {
 	return func(r *httpServer) { r.shutdownTimeout = d }
 }
