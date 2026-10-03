@@ -94,8 +94,11 @@ Wrappers compose behavior around a `Runnable`:
 |---------|-------------|
 | `HTTPServer(server, opts...)` | Start and gracefully shut down a `*http.Server` |
 | `Restart(r, opts...)` | Auto-restart on exit and on failure, with configurable limits and backoff |
+| `Retry(r, opts...)` | Run again after errors until it succeeds, with configurable limit and backoff |
 | `Schedule(r, spec, opts...)` | Run on a schedule: intervals, hourly, daily, cron, or custom |
 | `Recover(r)` | Catch panics and return them as errors |
+| `Timeout(d, r)` | Cancel a runnable that runs for too long, and fail |
+| `Delay(d, r)` | Wait before starting a runnable |
 | `Signal(r, signals...)` | Cancel context on OS signals |
 | `Closer(c)` | Call `Close()` on context cancellation, also `CloserErr`, `CloserCtx`, `CloserCtxErr` |
 | `Func(fn)` | Adapt a `func(context.Context) error` to `Runnable` |
