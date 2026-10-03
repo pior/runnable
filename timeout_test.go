@@ -34,16 +34,19 @@ func TestTimeout(t *testing.T) {
 	})
 
 	t.Run("times out", func(t *testing.T) {
-		for name, r := range map[string]Runnable{"nil": blocking(nil), "ctx.Err()": returnsCtxErr} {
-			t.Run(name, func(t *testing.T) {
-				logs := captureLogs(t)
+		logs := captureLogs(t)
 
-				err := Named("job", Timeout(10*time.Millisecond, r)).Run(context.Background())
-				require.EqualError(t, err, "timed out after 10ms: context deadline exceeded")
-				require.ErrorIs(t, err, context.DeadlineExceeded)
-				require.Equal(t, `level=INFO msg="job: timed out" timeout=10ms`+"\n", logs.String())
-			})
-		}
+		err := Named("job", Timeout(10*time.Millisecond, returnsCtxErr)).Run(context.Background())
+		require.EqualError(t, err, "timed out after 10ms: context deadline exceeded")
+		require.ErrorIs(t, err, context.DeadlineExceeded)
+		require.Equal(t, `level=INFO msg="job: timed out" timeout=10ms`+"\n", logs.String())
+	})
+
+	t.Run("succeeds when the runnable stops cleanly on the timeout", func(t *testing.T) {
+		logs := captureLogs(t)
+
+		require.NoError(t, Named("job", Timeout(10*time.Millisecond, blocking(nil))).Run(context.Background()))
+		require.Equal(t, `level=INFO msg="job: timed out" timeout=10ms`+"\n", logs.String())
 	})
 
 	t.Run("returns another error of a timed out runnable as is", func(t *testing.T) {

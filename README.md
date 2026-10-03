@@ -97,7 +97,7 @@ Wrappers compose behavior around a `Runnable`:
 | `Retry(r, opts...)` | Run again after errors until it succeeds, with configurable limit and backoff |
 | `Schedule(r, spec, opts...)` | Run on a schedule: intervals, hourly, daily, cron, or custom |
 | `Recover(r)` | Catch panics and return them as errors |
-| `Timeout(d, r)` | Cancel a runnable that runs for too long, and fail |
+| `Timeout(d, r)` | Cancel a runnable that runs for too long |
 | `Delay(d, r)` | Wait before starting a runnable |
 | `Signal(r, signals...)` | Cancel context on OS signals |
 | `Closer(c)` | Call `Close()` on context cancellation, also `CloserErr`, `CloserCtx`, `CloserCtxErr` |
