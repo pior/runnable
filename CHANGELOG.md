@@ -1,6 +1,6 @@
 # Changelog
 
-## v1.1.0 (unreleased)
+## v1.1.0 (2026-10-04)
 
 This release is breaking, under a minor version. The module path stays
 `github.com/pior/runnable`.
@@ -51,4 +51,3 @@ This release is breaking, under a minor version. The module path stays
 - Manager no longer panics at `Run` on non-comparable runnables.
 - Manager shutdown reason is `completed` when the runnable returned nil, `died` otherwise.
 - `Restart` logs `failed, restarting` with the error before restarting. Errors and panics, with their stack, were dropped.
-- `Retry` logs the stack of a panic in a `stack` attribute, like the manager. It was printed inside the `error` attribute.
