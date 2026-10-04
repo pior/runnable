@@ -24,7 +24,7 @@ This release is breaking, under a minor version. The module path stays
 | `Run`, `RunFunc`, `RunGroup` exit with `log.Fatal` | log `stopped with error` with the `SetLogger` logger, exit with status 1 |
 | `.Name(string)` on `Func`, `HTTPServer`, `Schedule`, `Manager` | removed, use `Named(name, r)` |
 | `HTTPServer(s).ShutdownTimeout(d).Listener(ln)` | `HTTPServer(s, DrainTimeout(d), Listener(ln))` |
-| `Restart(r).Limit(n).ErrorLimit(n).Delay(d).ErrorBackoff(fn).ErrorResetAfter(d)` | `Restart(r, RestartLimit(n), ...)` options |
+| `Restart(r).Limit(n).ErrorLimit(n).Delay(d).ErrorBackoff(fn).ErrorResetAfter(d)` | `Restart(r, RestartLimit(n), RestartErrorLimit(n), RestartDelay(d), ErrorBackoff(fn), RestartErrorResetAfter(d))` |
 | `Schedule(r, specs...)`, runs at whichever spec fires next | `Schedule(r, spec, opts...)`, one spec: use several schedules, or `Cron` |
 | `HTTPServer`, `Restart`, `Schedule`, `Func` return unexported types | return `Runnable` |
 | `Closer` wrappers return `*RunnableError` | `RunnableError` removed, the `Close` error is wrapped with `%w` |

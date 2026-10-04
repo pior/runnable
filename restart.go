@@ -11,14 +11,14 @@ import (
 // On successful exit, the runnable is restarted after [RestartDelay]. On error, it is
 // restarted after the backoff of [ErrorBackoff]. The error count tracks
 // consecutive errors and resets to zero after any successful run, or after a long
-// enough run with [ErrorResetAfter].
+// enough run with [RestartErrorResetAfter].
 //
 // It loops indefinitely unless limited by [RestartLimit] or [RestartErrorLimit]. When the
 // restart limit is reached, Run returns nil. When the error limit is reached, Run
 // returns the last error. Context cancellation stops the loop and returns
 // [context.Canceled].
 //
-//	runnable.Restart(worker, runnable.RestartErrorLimit(5), runnable.ErrorResetAfter(time.Minute))
+//	runnable.Restart(worker, runnable.RestartErrorLimit(5), runnable.RestartErrorResetAfter(time.Minute))
 func Restart(runnable Runnable, opts ...RestartOption) Runnable {
 	r := &restart{
 		name:           "restart/" + runnableName(runnable),
@@ -92,12 +92,12 @@ func (f errorBackoff) applyRestart(r *restart) { r.errorBackoffFn = f }
 
 func (f errorBackoff) applyRetry(r *retry) { r.errorBackoffFn = f }
 
-// ErrorResetAfter resets the consecutive error count when a single run lasted
+// RestartErrorResetAfter resets the consecutive error count when a single run lasted
 // at least the given duration before failing. This prevents long-running services
 // that occasionally fail from accumulating stale error counts into the backoff.
 // Zero means never reset based on duration (the default). Successful runs always
 // reset the error count regardless of this setting.
-func ErrorResetAfter(d time.Duration) RestartOption {
+func RestartErrorResetAfter(d time.Duration) RestartOption {
 	return restartOptionFunc(func(r *restart) { r.errorResetAfter = d })
 }
 

@@ -152,7 +152,7 @@ func TestRestart(t *testing.T) {
 
 			backoffCalls := []int{}
 			r := Restart(fn,
-				ErrorResetAfter(30*time.Minute),
+				RestartErrorResetAfter(30*time.Minute),
 				ErrorBackoff(func(n int) time.Duration {
 					backoffCalls = append(backoffCalls, n)
 					return 0
@@ -176,8 +176,8 @@ func TestRestart(t *testing.T) {
 			<-errChan
 
 			// Both backoff calls received errorCount=1 because each run
-			// lasted ≥ ErrorResetAfter, resetting the count before incrementing.
-			// Without ErrorResetAfter, the second call would have received 2.
+			// lasted ≥ RestartErrorResetAfter, resetting the count before incrementing.
+			// Without RestartErrorResetAfter, the second call would have received 2.
 			require.Equal(t, []int{1, 1}, backoffCalls)
 		})
 	})

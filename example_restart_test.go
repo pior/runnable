@@ -54,7 +54,7 @@ func ExampleRestart_options() {
 			return time.Duration(errors) * 10 * time.Millisecond
 		}),
 		// A run lasting a minute before failing resets the error count.
-		runnable.ErrorResetAfter(time.Minute),
+		runnable.RestartErrorResetAfter(time.Minute),
 	)
 
 	fmt.Println(r.Run(context.Background()))
