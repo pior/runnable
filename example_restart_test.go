@@ -50,7 +50,7 @@ func ExampleRestart_options() {
 		runnable.RestartLimit(2),
 		runnable.RestartDelay(10*time.Millisecond),
 		// Give up after 5 consecutive errors, returning the last one.
-		runnable.RestartErrorLimit(5),
+		runnable.ErrorLimit(5),
 		runnable.ErrorBackoff(func(errors int) time.Duration {
 			return time.Duration(errors) * 10 * time.Millisecond
 		}),
@@ -77,7 +77,7 @@ func ExampleRestart_errorLimit() {
 		return errors.New("connection refused")
 	}))
 
-	fmt.Println(runnable.Restart(connect, runnable.RestartErrorLimit(3)).Run(context.Background()))
+	fmt.Println(runnable.Restart(connect, runnable.ErrorLimit(3)).Run(context.Background()))
 
 	// Output:
 	// level=INFO msg="restart/connect: starting" restart=0 errors=0

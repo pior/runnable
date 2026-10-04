@@ -22,7 +22,7 @@ func ExampleRetry() {
 	}))
 
 	r := runnable.Retry(migrate,
-		runnable.RetryLimit(5),
+		runnable.ErrorLimit(5),
 		runnable.ErrorBackoff(func(int) time.Duration { return 10 * time.Millisecond }),
 	)
 

@@ -9,18 +9,19 @@ import (
 // until it succeeds. Panics are recovered and treated as errors.
 //
 // On error, the runnable runs again after the backoff of [ErrorBackoff], and
-// Retry logs the error. It retries indefinitely unless limited by [RetryLimit]:
-// when the limit is reached, Run returns the last error. Context cancellation
-// stops the loop and returns the context error.
+// Retry logs the error. It retries indefinitely unless limited by [ErrorLimit]:
+// when the limit is reached, Run returns the last error. [ErrorResetAfter]
+// resets the error count after a long enough run. Context cancellation stops
+// the loop and returns the context error.
 //
 // Unlike [Restart], a successful run is not restarted: Run returns nil.
 //
-//	runnable.Retry(migrate, runnable.RetryLimit(5))
+//	runnable.Retry(migrate, runnable.ErrorLimit(5))
 func Retry(runnable Runnable, opts ...RetryOption) Runnable {
 	r := &retry{
-		name:           "retry/" + runnableName(runnable),
-		runnable:       Recover(runnable),
-		errorBackoffFn: defaultErrorBackoff,
+		name:     "retry/" + runnableName(runnable),
+		runnable: Recover(runnable),
+		errors:   newErrorPolicy(),
 	}
 	for _, opt := range opts {
 		opt.applyRetry(r)
@@ -31,32 +32,22 @@ func Retry(runnable Runnable, opts ...RetryOption) Runnable {
 // RetryOption configures [Retry].
 type RetryOption interface{ applyRetry(*retry) }
 
-type retryOptionFunc func(*retry)
-
-func (f retryOptionFunc) applyRetry(r *retry) { f(r) }
-
 type retry struct {
-	name           string
-	runnable       Runnable
-	limit          int
-	errorBackoffFn func(int) time.Duration
+	name     string
+	runnable Runnable
+	errors   errorPolicy
 }
 
 var _ Runnable = (*retry)(nil)
 
 func (r *retry) runnableName() string { return r.name }
 
-// RetryLimit sets the maximum number of retries after errors: the runnable runs
-// at most n+1 times. When reached, [Retry] returns the last error. Zero means
-// unlimited (the default).
-func RetryLimit(n int) RetryOption {
-	return retryOptionFunc(func(r *retry) { r.limit = n })
-}
-
 func (r *retry) Run(ctx context.Context) error {
 	name := resolveName(ctx, r.name)
+	errorCount := 0
 
-	for errorCount := 1; ; errorCount++ {
+	for {
+		startTime := time.Now()
 		err := r.runnable.Run(ctx)
 
 		if ctx.Err() != nil {
@@ -65,12 +56,15 @@ func (r *retry) Run(ctx context.Context) error {
 		if err == nil {
 			return nil
 		}
-		if r.limit > 0 && errorCount > r.limit {
-			logger.Info(name+": not retrying", "reason", "retry limit", "limit", r.limit)
+
+		var limitReached bool
+		errorCount, limitReached = r.errors.countError(errorCount, time.Since(startTime))
+		if limitReached {
+			logger.Info(name+": not retrying", "reason", "error limit", "limit", r.errors.limit)
 			return err
 		}
 
-		delay := r.errorBackoffFn(errorCount)
+		delay := r.errors.backoff(errorCount)
 		logger.Info(name+": failed, retrying", append(errorAttrs(err), "errors", errorCount, "delay", delay)...)
 
 		select {

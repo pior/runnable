@@ -49,26 +49,54 @@ func TestRetry(t *testing.T) {
 			`level=INFO msg="job: failed, retrying" error=failed errors=2 delay=0s`+"\n", logs.String())
 	})
 
-	t.Run("retry limit", func(t *testing.T) {
+	t.Run("error limit", func(t *testing.T) {
 		logs := captureLogs(t)
 		dying := newDyingRunnable()
 
-		err := Named("job", Retry(dying, RetryLimit(3), noBackoff)).Run(context.Background())
+		err := Named("job", Retry(dying, ErrorLimit(3), noBackoff)).Run(context.Background())
 		require.EqualError(t, err, "dying")
-		require.Equal(t, 4, dying.counter) // 3 retries = 4 executions
-		require.Contains(t, logs.String(), `level=INFO msg="job: not retrying" reason="retry limit" limit=3`+"\n")
+		require.Equal(t, 3, dying.counter)
+		require.Contains(t, logs.String(), `level=INFO msg="job: not retrying" reason="error limit" limit=3`+"\n")
 	})
 
-	t.Run("succeeds on the last retry", func(t *testing.T) {
-		r, calls := failingTimes(3)
+	t.Run("succeeds on the last run before the error limit", func(t *testing.T) {
+		r, calls := failingTimes(2)
 
-		require.NoError(t, Retry(r, RetryLimit(3), noBackoff).Run(context.Background()))
-		require.Equal(t, 4, *calls)
+		require.NoError(t, Retry(r, ErrorLimit(3), noBackoff).Run(context.Background()))
+		require.Equal(t, 3, *calls)
+	})
+
+	t.Run("error count resets after a long run", func(t *testing.T) {
+		synctest.Test(t, func(t *testing.T) {
+			// Fails 3 times: quickly, after a long run, then quickly.
+			calls := 0
+			r := Func(func(context.Context) error {
+				calls++
+				if calls == 2 {
+					time.Sleep(time.Hour)
+				}
+				if calls <= 3 {
+					return errors.New("failed")
+				}
+				return nil
+			})
+
+			var counts []int
+			backoff := ErrorBackoff(func(n int) time.Duration {
+				counts = append(counts, n)
+				return 0
+			})
+
+			// Without the reset, the third error would reach the limit.
+			err := Retry(r, ErrorLimit(3), ErrorResetAfter(30*time.Minute), backoff).Run(context.Background())
+			require.NoError(t, err)
+			require.Equal(t, "[1 1 2]", fmt.Sprint(counts))
+		})
 	})
 
 	t.Run("retried panics are logged with the stack once", func(t *testing.T) {
 		logs := captureLogs(t)
-		_ = Retry(&panickingRunnable{}, RetryLimit(1), noBackoff).Run(context.Background())
+		_ = Retry(&panickingRunnable{}, ErrorLimit(2), noBackoff).Run(context.Background())
 
 		AssertPanicLogged(t, logs, "failed, retrying")
 	})
