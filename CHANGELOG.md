@@ -24,7 +24,7 @@ This release is breaking, under a minor version. The module path stays
 | `Run`, `RunFunc`, `RunGroup` exit with `log.Fatal` | log `stopped with error` with the `SetLogger` logger, exit with status 1 |
 | `.Name(string)` on `Func`, `HTTPServer`, `Schedule`, `Manager` | removed, use `Named(name, r)` |
 | `HTTPServer(s).ShutdownTimeout(d).Listener(ln)` | `HTTPServer(s, DrainTimeout(d), Listener(ln))` |
-| `Restart(r).Limit(n).ErrorLimit(n).Delay(d).ErrorBackoff(fn).ErrorResetAfter(d)` | `Restart(r, RestartLimit(n), ...)` options |
+| `Restart(r).Limit(n).ErrorLimit(n).Delay(d).ErrorBackoff(fn).ErrorResetAfter(d)` | `Restart(r, RestartLimit(n), ErrorLimit(n), RestartDelay(d), ErrorBackoff(fn), ErrorResetAfter(d))` |
 | `Schedule(r, specs...)`, runs at whichever spec fires next | `Schedule(r, spec, opts...)`, one spec: use several schedules, or `Cron` |
 | `HTTPServer`, `Restart`, `Schedule`, `Func` return unexported types | return `Runnable` |
 | `Closer` wrappers return `*RunnableError` | `RunnableError` removed, the `Close` error is wrapped with `%w` |
@@ -37,7 +37,8 @@ This release is breaking, under a minor version. The module path stays
 - `HTTPServer(s, Listener(ln))`: serve on a provided `net.Listener`.
 - `ScheduleContinueOnError()`: `Schedule` logs a failed run and runs again at the next tick, instead of stopping.
 - `ServerOption`: `DrainTimeout` and `Listener`, shared by the server wrappers.
-- `Retry(r, opts...)`: run again after errors until success, with `RetryLimit` and the `ErrorBackoff` shared with `Restart`.
+- `Retry(r, opts...)`: run again after errors until success.
+- `ErrorOption`: `ErrorLimit`, `ErrorBackoff` and `ErrorResetAfter`, shared by `Restart` and `Retry`.
 - `Delay(d, r)`: wait for d before running r, to stagger the start of jobs.
 - `Timeout(d, r)`: cancel a runnable running for longer than d.
 - `Cron(s)`: schedule spec for any type with a `Next(time.Time) time.Time` method, such as robfig/cron schedules.
