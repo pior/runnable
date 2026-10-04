@@ -27,6 +27,7 @@ This release is breaking, under a minor version. The module path stays
 | `Restart(r).Limit(n).ErrorLimit(n).Delay(d).ErrorBackoff(fn).ErrorResetAfter(d)` | `Restart(r, RestartLimit(n), ...)` options |
 | `Schedule(r, specs...)`, runs at whichever spec fires next | `Schedule(r, spec, opts...)`, one spec: use several schedules, or `Cron` |
 | `HTTPServer`, `Restart`, `Schedule`, `Func` return unexported types | return `Runnable` |
+| `Closer` wrappers return `*RunnableError` | `RunnableError` removed, the `Close` error is wrapped with `%w` |
 
 ### Added
 

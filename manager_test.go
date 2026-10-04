@@ -462,10 +462,7 @@ func TestManager_ErrorChain(t *testing.T) {
 			m.RegisterService(CloserErr(&failingCloser{}))
 
 			err := m.Run(cancelledContext())
-			require.EqualError(t, err, "manager: closer/failingCloser: closer: Close() returned an error: close failed")
-
-			var runnableErr *RunnableError
-			require.ErrorAs(t, err, &runnableErr)
+			require.EqualError(t, err, "manager: closer/failingCloser: close: close failed")
 		})
 	})
 }

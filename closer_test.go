@@ -64,8 +64,7 @@ func Test_Closer_Close_Error(t *testing.T) {
 	closer := &dummyCloser{err: testErr}
 
 	err := CloserErr(closer).Run(ctx)
-	require.EqualError(t, err, "closer: Close() returned an error: dummy error")
-	require.ErrorAs(t, err, new(*RunnableError))
+	require.EqualError(t, err, "close: dummy error")
 	require.ErrorIs(t, err, testErr)
 
 	require.Equal(t, 1, closer.called)
@@ -104,7 +103,7 @@ func Test_CloserCtxErr(t *testing.T) {
 		closer := &dummyCloserCtxErr{err: testErr}
 
 		err := CloserCtxErr(closer).Run(ctx)
-		require.EqualError(t, err, "closer: Close() returned an error: close failed")
+		require.EqualError(t, err, "close: close failed")
 		require.ErrorIs(t, err, testErr)
 		require.Equal(t, 1, closer.called)
 		require.NoError(t, closer.ctxErr, "context passed to Close should not be cancelled")
