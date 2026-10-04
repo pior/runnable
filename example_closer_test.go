@@ -67,15 +67,14 @@ func ExampleCloserErr() {
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel()
 
-	err := runnable.CloserErr(DB{err: errors.New("connection busy")}).Run(ctx)
+	errBusy := errors.New("connection busy")
+	err := runnable.CloserErr(DB{err: errBusy}).Run(ctx)
 	fmt.Println(err)
-
-	var re *runnable.RunnableError
-	fmt.Println(errors.As(err, &re))
+	fmt.Println(errors.Is(err, errBusy))
 
 	// Output:
 	// db closed
-	// closer: Close() returned an error: connection busy
+	// close: connection busy
 	// true
 }
 

@@ -2,6 +2,7 @@ package runnable
 
 import (
 	"context"
+	"fmt"
 )
 
 // Closer returns a runnable that calls Close on context cancellation.
@@ -51,7 +52,7 @@ func (c *closer) Run(ctx context.Context) error {
 	<-ctx.Done()
 	err := c.closeFn(context.WithoutCancel(ctx))
 	if err != nil {
-		return &RunnableError{"closer: Close() returned an error", err}
+		return fmt.Errorf("close: %w", err)
 	}
 	return nil
 }
