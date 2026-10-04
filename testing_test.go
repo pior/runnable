@@ -5,6 +5,7 @@ import (
 	"context"
 	"errors"
 	"log/slog"
+	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -168,4 +169,25 @@ func captureLogs(t *testing.T) *logBuffer {
 		},
 	})))
 	return buf
+}
+
+// AssertPanicLogged asserts that the last log line containing msg logs the
+// panic of panickingRunnable, with its stack logged once.
+func AssertPanicLogged(t *testing.T, logs *logBuffer, msg string) {
+	t.Helper()
+
+	var line string
+	for l := range strings.Lines(logs.String()) {
+		if strings.Contains(l, msg) {
+			line = l
+		}
+	}
+	require.Contains(t, line, `error="runnable panicked: boom" stack="goroutine `)
+	require.Equal(t, 1, strings.Count(line, "debug.Stack()"), "stack logged once:\n%s", line)
+}
+
+type panickingRunnable struct{}
+
+func (r *panickingRunnable) Run(context.Context) error {
+	panic("boom")
 }

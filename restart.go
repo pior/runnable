@@ -15,7 +15,7 @@ import (
 //
 // It loops indefinitely unless limited by [RestartLimit] or [RestartErrorLimit]. When the
 // restart limit is reached, Run returns nil. When the error limit is reached, Run
-// returns the last error. Context cancellation stops the loop and returns
+// returns the last error. Errors that are restarted are logged. Context cancellation stops the loop and returns
 // [context.Canceled].
 //
 //	runnable.Restart(worker, runnable.RestartErrorLimit(5), runnable.ErrorResetAfter(time.Minute))
@@ -142,6 +142,7 @@ func (r *restart) Run(ctx context.Context) error {
 		delay := r.delay
 		if err != nil {
 			delay = r.errorBackoffFn(errorCount)
+			logger.Info(name+": failed, restarting", append(errorAttrs(err), "errors", errorCount, "delay", delay)...)
 		}
 
 		select {

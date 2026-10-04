@@ -381,21 +381,8 @@ func TestManager_PanicLog(t *testing.T) {
 		m.RegisterProcess(&panickingRunnable{})
 		_ = m.Run(context.Background())
 
-		var line string
-		for l := range strings.Lines(logs.String()) {
-			if strings.Contains(l, "stopped with error") {
-				line = l
-			}
-		}
-		require.Contains(t, line, `error="runnable panicked: boom" stack="goroutine `)
-		require.Equal(t, 1, strings.Count(line, "debug.Stack()"), "stack logged once:\n%s", line)
+		AssertPanicLogged(t, logs, "stopped with error")
 	})
-}
-
-type panickingRunnable struct{}
-
-func (r *panickingRunnable) Run(context.Context) error {
-	panic("boom")
 }
 
 type failingCloser struct{}

@@ -83,6 +83,23 @@ func TestRestart(t *testing.T) {
 		require.Equal(t, 8, callCount)
 	})
 
+	t.Run("restarted errors are logged", func(t *testing.T) {
+		logs := captureLogs(t)
+		r := Restart(newDyingRunnable(), RestartErrorLimit(2), ErrorBackoff(func(int) time.Duration { return 0 }))
+
+		require.EqualError(t, Named("job", r).Run(context.Background()), "dying")
+		require.Contains(t, logs.String(),
+			`level=INFO msg="job: failed, restarting" error=dying errors=1 delay=0s`+"\n")
+	})
+
+	t.Run("restarted panics are logged with the stack once", func(t *testing.T) {
+		logs := captureLogs(t)
+		r := Restart(&panickingRunnable{}, RestartErrorLimit(2), ErrorBackoff(func(int) time.Duration { return 0 }))
+		_ = r.Run(context.Background())
+
+		AssertPanicLogged(t, logs, "failed, restarting")
+	})
+
 	t.Run("panic recovery", func(t *testing.T) {
 		callCount := 0
 		fn := Func(func(ctx context.Context) error {
