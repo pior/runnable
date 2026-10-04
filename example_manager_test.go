@@ -116,35 +116,3 @@ func ExampleNewManager_nested() {
 	// Output:
 	// <nil>
 }
-
-// App holds its manager in a field, which requires the exported Manager type.
-type App struct {
-	manager *runnable.Manager
-}
-
-// buildManager returns a configured manager, which requires the exported Manager type.
-func buildManager() *runnable.Manager {
-	m := runnable.NewManager()
-	registerJobs(m)
-	return m
-}
-
-// registerJobs only needs to register runnables, not to run the manager.
-func registerJobs(r runnable.ManagerRegistry) {
-	r.RegisterService(&Database{})
-}
-
-func ExampleManagerRegistry() {
-	app := &App{manager: buildManager()}
-
-	ctx, cancel := context.WithCancel(context.Background())
-	cancel()
-	fmt.Println(app.manager.Run(ctx))
-
-	// Output:
-	// level=INFO msg="manager/Database: started"
-	// level=INFO msg="manager: starting shutdown" reason="context cancelled"
-	// level=INFO msg="manager/Database: stopped"
-	// level=INFO msg="manager: shutdown complete"
-	// <nil>
-}

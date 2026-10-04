@@ -13,6 +13,7 @@ This release is breaking, under a minor version. The module path stays
 | `Manager()` returns unexported type | `NewManager() *Manager` |
 | `Register` | `RegisterProcess` |
 | `Register`/`RegisterService` return the registry | return nothing |
+| `ManagerRegistry` interface | removed, use `*Manager` |
 | Manager error is one flattened string | `errors.Join` chain, `%w` wrapped per runnable |
 | `"X is still running"` text | `ErrShutdownTimeout` sentinel |
 | `Manager().ShutdownTimeout(d)`, 10s per phase | `NewManager(ProcessShutdownTimeout(d), ServiceShutdownTimeout(d))`, 15s and 10s |

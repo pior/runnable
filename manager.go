@@ -78,22 +78,7 @@ func ServiceShutdownTimeout(d time.Duration) ManagerOption {
 
 func (m *Manager) runnableName() string { return "manager" }
 
-// ManagerRegistry is the interface for registering runnables with a [Manager].
-// It lets helpers register runnables without being able to run the manager.
-type ManagerRegistry interface {
-	// RegisterProcess registers processes. Processes are the primary runnables of the
-	// application. They are cancelled first during shutdown.
-	RegisterProcess(processes ...Runnable)
-	// RegisterService registers services. Services are infrastructure runnables
-	// (databases, queues, etc.) that processes depend on. They are cancelled after
-	// all processes have stopped.
-	RegisterService(services ...Runnable)
-}
-
-var (
-	_ Runnable        = (*Manager)(nil)
-	_ ManagerRegistry = (*Manager)(nil)
-)
+var _ Runnable = (*Manager)(nil)
 
 // RegisterProcess registers processes. Processes are the primary runnables of the
 // application. They are cancelled first during shutdown.
