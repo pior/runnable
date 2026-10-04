@@ -66,6 +66,13 @@ func TestRetry(t *testing.T) {
 		require.Equal(t, 4, *calls)
 	})
 
+	t.Run("retried panics are logged with the stack once", func(t *testing.T) {
+		logs := captureLogs(t)
+		_ = Retry(&panickingRunnable{}, RetryLimit(1), noBackoff).Run(context.Background())
+
+		AssertPanicLogged(t, logs, "failed, retrying")
+	})
+
 	t.Run("panic recovery", func(t *testing.T) {
 		calls := 0
 		fn := Func(func(context.Context) error {

@@ -49,3 +49,5 @@ This release is breaking, under a minor version. The module path stays
 - `RestartLimit` counts only restarts after a successful run, as documented. Restarts after errors counted too.
 - Manager no longer panics at `Run` on non-comparable runnables.
 - Manager shutdown reason is `completed` when the runnable returned nil, `died` otherwise.
+- `Restart` logs `failed, restarting` with the error before restarting. Errors and panics, with their stack, were dropped.
+- `Retry` logs the stack of a panic in a `stack` attribute, like the manager. It was printed inside the `error` attribute.

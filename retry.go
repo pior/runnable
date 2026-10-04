@@ -71,7 +71,7 @@ func (r *retry) Run(ctx context.Context) error {
 		}
 
 		delay := r.errorBackoffFn(errorCount)
-		logger.Info(name+": failed, retrying", "error", err, "errors", errorCount, "delay", delay)
+		logger.Info(name+": failed, retrying", append(errorAttrs(err), "errors", errorCount, "delay", delay)...)
 
 		select {
 		case <-ctx.Done():

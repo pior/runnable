@@ -30,6 +30,7 @@ func ExampleRestart() {
 	// Output:
 	// level=INFO msg="restart/worker: starting" restart=0 errors=0
 	// level=INFO msg="restart/worker: starting" restart=1 errors=0
+	// level=INFO msg="restart/worker: failed, restarting" error=failed errors=1 delay=0s
 	// level=INFO msg="restart/worker: starting" restart=2 errors=1
 	// context canceled
 }
@@ -61,7 +62,9 @@ func ExampleRestart_options() {
 
 	// Output:
 	// level=INFO msg="restart/worker: starting" restart=0 errors=0
+	// level=INFO msg="restart/worker: failed, restarting" error=failed errors=1 delay=10ms
 	// level=INFO msg="restart/worker: starting" restart=1 errors=1
+	// level=INFO msg="restart/worker: failed, restarting" error=failed errors=2 delay=20ms
 	// level=INFO msg="restart/worker: starting" restart=2 errors=2
 	// level=INFO msg="restart/worker: starting" restart=3 errors=0
 	// level=INFO msg="restart/worker: starting" restart=4 errors=0
@@ -78,7 +81,9 @@ func ExampleRestart_errorLimit() {
 
 	// Output:
 	// level=INFO msg="restart/connect: starting" restart=0 errors=0
+	// level=INFO msg="restart/connect: failed, restarting" error="connection refused" errors=1 delay=0s
 	// level=INFO msg="restart/connect: starting" restart=1 errors=1
+	// level=INFO msg="restart/connect: failed, restarting" error="connection refused" errors=2 delay=0s
 	// level=INFO msg="restart/connect: starting" restart=2 errors=2
 	// level=INFO msg="restart/connect: not restarting" reason="error limit" limit=3
 	// connection refused
