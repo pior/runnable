@@ -19,9 +19,12 @@ import (
 //		runnabletest.AssertCancellation(t, NewWorker(), time.Second)
 //	}
 func AssertCancellation(t *testing.T, r runnable.Runnable, wait time.Duration) {
+	// Helper in the subtests too, so a failure points at the caller.
 	t.Helper()
 
 	t.Run("cancelled while running", func(t *testing.T) {
+		t.Helper()
+
 		ctx, cancel := context.WithCancel(context.Background())
 		errc := run(ctx, r)
 
@@ -33,6 +36,8 @@ func AssertCancellation(t *testing.T, r runnable.Runnable, wait time.Duration) {
 	})
 
 	t.Run("already cancelled", func(t *testing.T) {
+		t.Helper()
+
 		ctx, cancel := context.WithCancel(context.Background())
 		cancel()
 

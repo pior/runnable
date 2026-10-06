@@ -62,6 +62,9 @@ func TestAssertCancellationFails(t *testing.T) {
 			var exitErr *exec.ExitError
 			require.ErrorAs(t, err, &exitErr, "child test passed:\n%s", out)
 			require.Contains(t, string(out), "cancellation")
+			// The failure points at the caller, not inside runnabletest.
+			require.Contains(t, string(out), " runnabletest_test.go:")
+			require.NotContains(t, string(out), " runnabletest.go:")
 		})
 	}
 }
