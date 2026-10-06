@@ -11,7 +11,7 @@ import (
 
 type server struct {
 	name         string
-	addr         string
+	addr         func() string
 	serve        func(net.Listener) error
 	shutdown     func(context.Context) error
 	listener     net.Listener
@@ -30,9 +30,12 @@ func (r *server) runnableName() string { return r.name }
 //
 //	runnable.HTTPServer(server, runnable.DrainTimeout(10*time.Second))
 func HTTPServer(s *http.Server, opts ...ServerOption) Runnable {
-	addr := s.Addr
-	if addr == "" {
-		addr = ":http"
+	// Read at Run, so an Addr set after HTTPServer is called is used.
+	addr := func() string {
+		if s.Addr == "" {
+			return ":http"
+		}
+		return s.Addr
 	}
 	serve := func(ln net.Listener) error {
 		if err := s.Serve(ln); !errors.Is(err, http.ErrServerClosed) {
@@ -72,11 +75,12 @@ func GRPCServer(addr string, s interface {
 			return ctx.Err()
 		}
 	}
-	return newServer("grpcserver", addr, s.Serve, shutdown, opts)
+	return newServer("grpcserver", func() string { return addr }, s.Serve, shutdown, opts)
 }
 
 func newServer(
-	name, addr string,
+	name string,
+	addr func() string,
 	serve func(net.Listener) error,
 	shutdown func(context.Context) error,
 	opts []ServerOption,
@@ -181,7 +185,7 @@ func (r *server) listen(ctx context.Context) (net.Listener, error) {
 	}
 	// Listen even when ctx is already cancelled: Run then drains and stops cleanly.
 	var lc net.ListenConfig
-	return lc.Listen(context.WithoutCancel(ctx), "tcp", r.addr)
+	return lc.Listen(context.WithoutCancel(ctx), "tcp", r.addr())
 }
 
 func (r *server) drain() error {

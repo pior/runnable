@@ -196,6 +196,15 @@ func TestHTTPServer(t *testing.T) {
 		require.Empty(t, logs.String()) // never listened, and the manager logs the error
 	})
 
+	t.Run("reads the address at run", func(t *testing.T) {
+		server := &http.Server{Handler: http.NotFoundHandler()}
+		r := HTTPServer(server)
+		server.Addr = "INVALID"
+
+		err := r.Run(context.Background())
+		require.EqualError(t, err, "listen tcp: address INVALID: missing port in address")
+	})
+
 	t.Run("pre-cancelled context", func(t *testing.T) {
 		server := &http.Server{
 			Addr:    "127.0.0.1:0",
