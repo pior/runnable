@@ -28,6 +28,16 @@ func TestExponentialBackoff(t *testing.T) {
 		require.Equal(t, "[1s 1s]", delays(backoff, 2))
 	})
 
+	t.Run("odd max delay", func(t *testing.T) {
+		backoff := ExponentialBackoff(time.Nanosecond, 3*time.Nanosecond)
+		require.Equal(t, "[1ns 2ns 3ns]", delays(backoff, 3))
+	})
+
+	t.Run("non-positive base", func(t *testing.T) {
+		require.Equal(t, "0s", ExponentialBackoff(0, time.Minute)(1<<40).String())
+		require.Equal(t, "0s", ExponentialBackoff(-time.Second, time.Minute)(1<<40).String())
+	})
+
 	t.Run("no overflow on many errors", func(t *testing.T) {
 		backoff := ExponentialBackoff(time.Second, time.Duration(1<<62))
 		require.Equal(t, time.Duration(1<<62).String(), backoff(1000).String())

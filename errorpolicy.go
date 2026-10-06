@@ -1,6 +1,9 @@
 package runnable
 
-import "time"
+import (
+	"math"
+	"time"
+)
 
 // ErrorOption configures how [Restart] and [Retry] handle errors.
 type ErrorOption interface {
@@ -69,14 +72,13 @@ func ErrorBackoff(fn func(errors int) time.Duration) ErrorOption {
 //	runnable.ErrorBackoff(runnable.ExponentialBackoff(time.Second, time.Minute))
 func ExponentialBackoff(base, maxDelay time.Duration) func(errors int) time.Duration {
 	return func(errors int) time.Duration {
-		delay := base
-		for range errors - 1 {
-			if delay >= maxDelay/2 {
-				return maxDelay
-			}
-			delay *= 2
+		// In float64, an overflow is +Inf instead of a wrapped value. Compare
+		// before converting back: out of range float to int is undefined.
+		delay := math.Ldexp(float64(base), errors-1)
+		if delay >= float64(maxDelay) {
+			return maxDelay
 		}
-		return min(delay, maxDelay)
+		return time.Duration(max(delay, 0))
 	}
 }
 
