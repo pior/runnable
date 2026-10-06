@@ -4,6 +4,7 @@
 
 ### Added
 
+- `GRPCServer(addr, s, opts...)`: start and gracefully stop a `*grpc.Server`, without depending on grpc.
 - `ExponentialBackoff(base, maxDelay)`: a backoff for `ErrorBackoff` that doubles the delay with each consecutive error, up to `maxDelay`.
 
 ### Changed
