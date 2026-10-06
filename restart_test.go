@@ -3,6 +3,7 @@ package runnable
 import (
 	"context"
 	"errors"
+	"fmt"
 	"sync/atomic"
 	"testing"
 	"testing/synctest"
@@ -57,6 +58,18 @@ func TestRestart(t *testing.T) {
 		require.EqualError(t, err, "dying")
 
 		require.Equal(t, 10, counter.counter)
+	})
+
+	t.Run("on error is called with each error, including the last one", func(t *testing.T) {
+		onError, seen := errorsSeen()
+
+		r := Restart(newDyingRunnable(),
+			onError,
+			ErrorLimit(3),
+			ErrorBackoff(func(int) time.Duration { return 0 }))
+		require.EqualError(t, r.Run(context.Background()), "dying")
+
+		require.Equal(t, "[dying dying dying]", fmt.Sprint(*seen))
 	})
 
 	t.Run("error count resets on success", func(t *testing.T) {

@@ -143,12 +143,6 @@ func TestRetry(t *testing.T) {
 	})
 
 	t.Run("on error", func(t *testing.T) {
-		// errorsSeen returns an OnError option that records the errors.
-		errorsSeen := func() (RetryOption, *[]string) {
-			var seen []string
-			return OnError(func(err error) { seen = append(seen, err.Error()) }), &seen
-		}
-
 		t.Run("called for each retried error", func(t *testing.T) {
 			r, _ := failingTimes(2)
 			onError, seen := errorsSeen()
