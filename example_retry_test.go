@@ -34,3 +34,18 @@ func ExampleRetry() {
 	// migrated
 	// <nil>
 }
+
+func ExampleExponentialBackoff() {
+	backoff := runnable.ExponentialBackoff(time.Second, 10*time.Second)
+
+	for errors := range 5 {
+		fmt.Println(backoff(errors + 1))
+	}
+
+	// Output:
+	// 1s
+	// 2s
+	// 4s
+	// 8s
+	// 10s
+}

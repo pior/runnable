@@ -59,6 +59,24 @@ func ErrorBackoff(fn func(errors int) time.Duration) ErrorOption {
 	return errorOptionFunc(func(p *errorPolicy) { p.backoff = fn })
 }
 
+// ExponentialBackoff returns a backoff for [ErrorBackoff] that doubles the
+// delay with each consecutive error, from base up to maxDelay: base, 2·base,
+// 4·base, and so on.
+//
+//	runnable.ErrorBackoff(runnable.ExponentialBackoff(time.Second, time.Minute))
+func ExponentialBackoff(base, maxDelay time.Duration) func(errors int) time.Duration {
+	return func(errors int) time.Duration {
+		delay := base
+		for range errors - 1 {
+			if delay >= maxDelay/2 {
+				return maxDelay
+			}
+			delay *= 2
+		}
+		return min(delay, maxDelay)
+	}
+}
+
 // ErrorResetAfter resets the consecutive error count when a single run lasted
 // at least the given duration before failing. This prevents a long-running
 // runnable that occasionally fails from accumulating stale errors into the

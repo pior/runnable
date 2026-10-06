@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+### Added
+
+- `ExponentialBackoff(base, maxDelay)`: a backoff for `ErrorBackoff` that doubles the delay with each consecutive error, up to `maxDelay`.
+
 ### Changed
 
 - `OnError` returns an `ErrorOption`, shared by `Restart` and `Retry`. `Restart` calls it with each error, including the last one returned at the error limit.
