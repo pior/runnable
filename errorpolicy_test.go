@@ -23,6 +23,11 @@ func TestExponentialBackoff(t *testing.T) {
 		require.Equal(t, "[1s 2s 4s 8s 16s 32s 1m0s 1m0s]", delays(backoff, 8))
 	})
 
+	t.Run("sub-second base", func(t *testing.T) {
+		backoff := ExponentialBackoff(100*time.Millisecond, 10*time.Second)
+		require.Equal(t, "[100ms 200ms 400ms 800ms 1.6s 3.2s 6.4s 10s]", delays(backoff, 8))
+	})
+
 	t.Run("max delay below base", func(t *testing.T) {
 		backoff := ExponentialBackoff(time.Minute, time.Second)
 		require.Equal(t, "[1s 1s]", delays(backoff, 2))
