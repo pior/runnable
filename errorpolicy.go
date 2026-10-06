@@ -67,11 +67,6 @@ func ErrorBackoff(fn func(errors int) time.Duration) ErrorOption {
 // 8th consecutive errors are 1s, 2s, 4s, 8s, 16s, 32s, 1m and 1m:
 //
 //	runnable.ErrorBackoff(runnable.ExponentialBackoff(time.Second, time.Minute))
-//
-// With a base of 100ms and a max of 10s, they are 100ms, 200ms, 400ms, 800ms,
-// 1.6s, 3.2s, 6.4s and 10s:
-//
-//	runnable.ErrorBackoff(runnable.ExponentialBackoff(100*time.Millisecond, 10*time.Second))
 func ExponentialBackoff(base, maxDelay time.Duration) func(errors int) time.Duration {
 	return func(errors int) time.Duration {
 		delay := base
