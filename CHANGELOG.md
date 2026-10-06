@@ -4,6 +4,7 @@
 
 ### Added
 
+- `runnabletest.AssertCancellation(t, r, wait)`: check that a runnable follows the cancellation contract.
 - `ExponentialBackoff(base, maxDelay)`: a backoff for `ErrorBackoff` that doubles the delay with each consecutive error, up to `maxDelay`.
 
 ### Changed

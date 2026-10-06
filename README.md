@@ -104,6 +104,10 @@ Wrappers compose behavior around a `Runnable`:
 | `Func(fn)` | Adapt a `func(context.Context) error` to `Runnable` |
 | `Named(name, r)` | Give a runnable a name, readable with `NameFromContext` |
 
+## Testing
+
+`runnabletest.AssertCancellation(t, r, wait)` checks that a runnable follows the cancellation contract: it returns `nil` or `context.Canceled` when cancelled.
+
 ## License
 
 The MIT License (MIT)
