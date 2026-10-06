@@ -1,5 +1,11 @@
 # Changelog
 
+## v1.1.1 (unreleased)
+
+### Added
+
+- `OnError(fn)`: `Retry` calls `fn` with each error, including the last one returned at the error limit.
+
 ## v1.1.0 (2026-10-04)
 
 This release is breaking, under a minor version. The module path stays

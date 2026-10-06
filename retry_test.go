@@ -142,6 +142,50 @@ func TestRetry(t *testing.T) {
 		})
 	})
 
+	t.Run("on error", func(t *testing.T) {
+		// errorsSeen returns an OnError option that records the errors.
+		errorsSeen := func() (RetryOption, *[]string) {
+			var seen []string
+			return OnError(func(err error) { seen = append(seen, err.Error()) }), &seen
+		}
+
+		t.Run("called for each retried error", func(t *testing.T) {
+			r, _ := failingTimes(2)
+			onError, seen := errorsSeen()
+
+			require.NoError(t, Retry(r, onError, noBackoff).Run(context.Background()))
+			require.Equal(t, "[failed failed]", fmt.Sprint(*seen))
+		})
+
+		t.Run("called for the last error at the error limit", func(t *testing.T) {
+			onError, seen := errorsSeen()
+
+			err := Retry(newDyingRunnable(), onError, ErrorLimit(3), noBackoff).Run(context.Background())
+			require.EqualError(t, err, "dying")
+			require.Equal(t, "[dying dying dying]", fmt.Sprint(*seen))
+		})
+
+		t.Run("receives a recovered panic", func(t *testing.T) {
+			var panicErr *PanicError
+			onError := OnError(func(err error) { require.ErrorAs(t, err, &panicErr) })
+
+			_ = Retry(&panickingRunnable{}, onError, ErrorLimit(1)).Run(context.Background())
+			require.NotNil(t, panicErr)
+		})
+
+		t.Run("not called on cancellation", func(t *testing.T) {
+			ctx, cancel := context.WithCancel(context.Background())
+			r := Func(func(context.Context) error {
+				cancel()
+				return errors.New("failed")
+			})
+			onError, seen := errorsSeen()
+
+			require.ErrorIs(t, Retry(r, onError).Run(ctx), context.Canceled)
+			require.Empty(t, *seen)
+		})
+	})
+
 	t.Run("name", func(t *testing.T) {
 		require.Equal(t, "retry/dummyRunnable", runnableName(Retry(newDummyRunnable())))
 	})

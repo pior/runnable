@@ -11,8 +11,8 @@ import (
 // On error, the runnable runs again after the backoff of [ErrorBackoff], and
 // Retry logs the error. It retries indefinitely unless limited by [ErrorLimit]:
 // when the limit is reached, Run returns the last error. [ErrorResetAfter]
-// resets the error count after a long enough run. Context cancellation stops
-// the loop and returns the context error.
+// resets the error count after a long enough run. [OnError] is called with each
+// error. Context cancellation stops the loop and returns the context error.
 //
 // Unlike [Restart], a successful run is not restarted: Run returns nil.
 //
@@ -32,15 +32,27 @@ func Retry(runnable Runnable, opts ...RetryOption) Runnable {
 // RetryOption configures [Retry].
 type RetryOption interface{ applyRetry(*retry) }
 
+type retryOptionFunc func(*retry)
+
+func (f retryOptionFunc) applyRetry(r *retry) { f(r) }
+
 type retry struct {
 	name     string
 	runnable Runnable
 	errors   errorPolicy
+	onError  func(error)
 }
 
 var _ Runnable = (*retry)(nil)
 
 func (r *retry) runnableName() string { return r.name }
+
+// OnError sets a function called with each error of the runnable, including the
+// last one when [ErrorLimit] is reached. A recovered panic is a [*PanicError].
+// It is not called when the run stops on context cancellation.
+func OnError(fn func(err error)) RetryOption {
+	return retryOptionFunc(func(r *retry) { r.onError = fn })
+}
 
 func (r *retry) Run(ctx context.Context) error {
 	name := resolveName(ctx, r.name)
@@ -55,6 +67,9 @@ func (r *retry) Run(ctx context.Context) error {
 		}
 		if err == nil {
 			return nil
+		}
+		if r.onError != nil {
+			r.onError(err)
 		}
 
 		var limitReached bool
