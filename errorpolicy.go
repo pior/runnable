@@ -63,6 +63,9 @@ func ErrorBackoff(fn func(errors int) time.Duration) ErrorOption {
 // delay with each consecutive error, from base up to maxDelay: base, 2·base,
 // 4·base, and so on.
 //
+// For example, with a base of 1s and a max of 1m, the delays for the 1st to
+// 8th consecutive errors are 1s, 2s, 4s, 8s, 16s, 32s, 1m and 1m:
+//
 //	runnable.ErrorBackoff(runnable.ExponentialBackoff(time.Second, time.Minute))
 func ExponentialBackoff(base, maxDelay time.Duration) func(errors int) time.Duration {
 	return func(errors int) time.Duration {
