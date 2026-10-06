@@ -54,6 +54,12 @@ func (r *dyingRunnable) Run(ctx context.Context) error {
 	return errors.New("dying")
 }
 
+// errorsSeen returns an [OnError] option that records the errors.
+func errorsSeen() (ErrorOption, *[]string) {
+	var seen []string
+	return OnError(func(err error) { seen = append(seen, err.Error()) }), &seen
+}
+
 type dummyError struct {
 	message string
 }

@@ -15,7 +15,8 @@ import (
 //
 // It loops indefinitely unless limited by [RestartLimit] or [ErrorLimit]. When the
 // restart limit is reached, Run returns nil. When the error limit is reached, Run
-// returns the last error. Errors that are restarted are logged. Context cancellation stops the loop and returns
+// returns the last error. Errors that are restarted are logged. [OnError] is
+// called with each error. Context cancellation stops the loop and returns
 // [context.Canceled].
 //
 //	runnable.Restart(worker, runnable.ErrorLimit(5), runnable.ErrorResetAfter(time.Minute))
@@ -79,6 +80,8 @@ func (r *restart) Run(ctx context.Context) error {
 		}
 
 		if err != nil {
+			r.errors.notify(err)
+
 			var limitReached bool
 			errorCount, limitReached = r.errors.countError(errorCount, time.Since(startTime))
 			if limitReached {

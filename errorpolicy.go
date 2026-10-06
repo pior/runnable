@@ -1,6 +1,9 @@
 package runnable
 
-import "time"
+import (
+	"math"
+	"time"
+)
 
 // ErrorOption configures how [Restart] and [Retry] handle errors.
 type ErrorOption interface {
@@ -13,6 +16,7 @@ type errorPolicy struct {
 	limit      int
 	backoff    func(errors int) time.Duration
 	resetAfter time.Duration
+	onError    func(error)
 }
 
 func newErrorPolicy() errorPolicy {
@@ -27,6 +31,13 @@ func (p errorPolicy) countError(count int, d time.Duration) (int, bool) {
 	}
 	count++
 	return count, p.limit > 0 && count >= p.limit
+}
+
+// notify calls the [OnError] function, if any.
+func (p errorPolicy) notify(err error) {
+	if p.onError != nil {
+		p.onError(err)
+	}
 }
 
 type errorOptionFunc func(*errorPolicy)
@@ -51,12 +62,39 @@ func ErrorBackoff(fn func(errors int) time.Duration) ErrorOption {
 	return errorOptionFunc(func(p *errorPolicy) { p.backoff = fn })
 }
 
+// ExponentialBackoff returns a backoff for [ErrorBackoff] that doubles the
+// delay with each consecutive error, from base up to maxDelay: base, 2·base,
+// 4·base, and so on.
+//
+// For example, with a base of 1s and a max of 1m, the delays for the 1st to
+// 8th consecutive errors are 1s, 2s, 4s, 8s, 16s, 32s, 1m and 1m:
+//
+//	runnable.ErrorBackoff(runnable.ExponentialBackoff(time.Second, time.Minute))
+func ExponentialBackoff(base, maxDelay time.Duration) func(errors int) time.Duration {
+	return func(errors int) time.Duration {
+		// In float64, an overflow is +Inf instead of a wrapped value. Compare
+		// before converting back: out of range float to int is undefined.
+		delay := math.Ldexp(float64(base), errors-1)
+		if delay >= float64(maxDelay) {
+			return maxDelay
+		}
+		return time.Duration(max(delay, 0))
+	}
+}
+
 // ErrorResetAfter resets the consecutive error count when a single run lasted
 // at least the given duration before failing. This prevents a long-running
 // runnable that occasionally fails from accumulating stale errors into the
 // backoff and the limit. Zero means never reset based on duration (the default).
 func ErrorResetAfter(d time.Duration) ErrorOption {
 	return errorOptionFunc(func(p *errorPolicy) { p.resetAfter = d })
+}
+
+// OnError sets a function called with each error of the runnable, including the
+// last one when [ErrorLimit] is reached. A recovered panic is a [*PanicError].
+// It is not called when the run stops on context cancellation.
+func OnError(fn func(err error)) ErrorOption {
+	return errorOptionFunc(func(p *errorPolicy) { p.onError = fn })
 }
 
 func defaultErrorBackoff(errorCount int) time.Duration {
